@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="0%" r="80%">
+      <stop offset="0%" stop-color="#3B82F6" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#050505" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="line" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="#050505"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <circle cx="560" cy="250" r="58" fill="none" stroke="#3B82F6" stroke-width="6"/>
+  <circle cx="560" cy="250" r="22" fill="#60A5FA"/>
+  <path d="M122 252l4 0zM560 152l0 24-0 0z" fill="none"/>
+  <g fill="none" stroke="#3B82F6" stroke-width="7" stroke-linecap="round">
+    <line x1="560" y1="150" x2="560" y2="178"/>
+    <line x1="560" y1="322" x2="560" y2="350"/>
+    <line x1="438" y1="250" x2="482" y2="250"/>
+    <line x1="638" y1="250" x2="682" y2="250"/>
+    <line x1="473" y1="163" x2="497" y2="187"/>
+    <line x1="623" y1="313" x2="647" y2="337"/>
+    <line x1="647" y1="163" x2="623" y2="187"/>
+    <line x1="497" y1="313" x2="473" y2="337"/>
+  </g>
+  <text x="120" y="430" font-family="Segoe UI, Arial, sans-serif" font-size="62" font-weight="800" fill="#FFFFFF" letter-spacing="-1">THE TECH GUIDER HUB</text>
+  <text x="120" y="486" font-family="Segoe UI, Arial, sans-serif" font-size="30" fill="#A1A1AA">Everything from The Tech Guider, in one place.</text>
+</svg>

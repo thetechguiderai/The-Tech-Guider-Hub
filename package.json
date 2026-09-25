@@ -1,0 +1,37 @@
+{
+  "name": "the-tech-guider-hub",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "description": "The Tech Guider Hub - official resource hub for The Tech Guider YouTube channel",
+  "scripts": {
+    "setup": "node server/scripts/owner-cli.js init",
+    "owner:change": "node server/scripts/owner-cli.js change",
+    "owner:hash": "node server/scripts/owner-cli.js hash",
+    "seed": "node server/seed.js",
+    "dev": "npm run build && cross-env NODE_ENV=development node server/index.js",
+    "build": "vite build",
+    "start": "cross-env NODE_ENV=production node server/index.js",
+    "test": "node server/scripts/test-api.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "cross-env": "^7.0.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
+    "typescript": "^7.0.2",
+    "vite": "^5.4.11"
+  },
+  "allowScripts": {
+    "esbuild@0.21.5": true
+  }
+}
