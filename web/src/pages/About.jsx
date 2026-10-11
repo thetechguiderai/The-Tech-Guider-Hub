@@ -5,7 +5,7 @@ import { useMeta } from '../App';
 import { SectionHead, Icon } from '../components/ui';
 
 export default function About() {
-  useMeta('About — The Tech Guider Hub', 'About The Tech Guider, the official hub, and the community rules around rewards.');
+  useMeta('About — The Tech Guider 01', 'About The Tech Guider 01, the official hub, and the community rules around rewards.');
   const { site } = useSite();
 
   const steps = [
@@ -21,15 +21,15 @@ export default function About() {
     <div className="container" style={{ paddingTop: 48, paddingBottom: 60, maxWidth: 840 }}>
       <SectionHead
         eyebrow="The channel"
-        title="About The Tech Guider"
+        title="About The Tech Guider 01"
         sub="Guides, reviews and tools across tech and gaming — with every resource used in the videos kept in one honest, organised place."
       />
 
       <div className="mt-3" style={{ marginTop: 20 }}>
         <p className="text-sm muted" style={{ lineHeight: 1.75 }}>
-          The Tech Guider Hub is the official home for everything the channel shares: the exact websites, hosts
+          The Tech Guider 01 is the official home for everything the channel shares: the exact websites, hosts
           and tools used in videos, the Free Fire sensitivity generator, the Minecraft section, live channel
-          statistics, and the Tech Guider AI assistant.
+          statistics, and the Tech Guider 01 AI assistant.
         </p>
         <p className="text-sm muted" style={{ lineHeight: 1.75, marginTop: 12 }}>
           No affiliate tricks, no hidden agendas. When a service is free, it is labelled free. When a tool gives
@@ -41,7 +41,7 @@ export default function About() {
       <div className="card mt-3" style={{ marginTop: 28 }}>
         <h2 style={{ fontSize: 20, marginBottom: 8 }}>Community & rewards</h2>
         <p className="text-sm muted" style={{ lineHeight: 1.7 }}>
-          The Tech Guider does not pretend to automatically verify subscriptions, likes or comments — YouTube does
+          The Tech Guider 01 does not pretend to automatically verify subscriptions, likes or comments — YouTube does
           not allow that through a public API in an honest way. Every reward follows a transparent, human-verified
           workflow:
         </p>
@@ -54,7 +54,7 @@ export default function About() {
         </ol>
         <p className="text-xs muted3" style={{ lineHeight: 1.7, marginTop: 14 }}>
           Never share your password, login or personal credentials with anyone — including people claiming to be
-          from The Tech Guider. Credentials are only ever handled privately through the verified Discord workflow,
+          from The Tech Guider 01. Credentials are only ever handled privately through the verified Discord workflow,
           and legitimate owners never ask for your password.
         </p>
       </div>

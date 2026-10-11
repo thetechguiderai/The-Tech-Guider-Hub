@@ -1,24 +1,49 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { publicApi } from '../api';
 import { useMeta } from '../App';
 import { SectionHead, ErrorState, Spinner, EmptyState, Badge } from '../components/ui';
 import { VideoCard } from '../components/cards';
 
+function SkeletonCard() {
+  return (
+    <div className="video-card skeleton-card" aria-hidden="true">
+      <div className="video-thumb-wrap">
+        <div className="skeleton" style={{ width: '100%', height: '100%', borderRadius: 0 }} />
+      </div>
+      <div className="video-body">
+        <div className="skeleton" style={{ width: '80%', height: 16, borderRadius: 4 }} />
+        <div className="skeleton" style={{ width: '50%', height: 12, borderRadius: 4, marginTop: 8 }} />
+        <div className="skeleton" style={{ width: '90%', height: 12, borderRadius: 4, marginTop: 8 }} />
+      </div>
+    </div>
+  );
+}
+
 export default function Videos() {
-  useMeta('Videos — The Tech Guider Hub', 'All The Tech Guider videos and upcoming releases with their resources.');
+  useMeta('Videos — The Tech Guider 01', 'All The Tech Guider 01 videos and upcoming releases with their resources.');
   const [state, setState] = useState({ loading: true, data: null, error: null });
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
+  const [showContent, setShowContent] = useState(false);
+  const mounted = useRef(true);
 
   useEffect(() => {
+    mounted.current = true;
     (async () => {
       try {
         const d = await publicApi.videos();
-        setState({ loading: false, data: d.videos, error: null });
+        if (mounted.current) {
+          setState({ loading: false, data: d.videos, error: null });
+          // Smooth transition: brief delay before showing real content
+          setTimeout(() => mounted.current && setShowContent(true), 150);
+        }
       } catch {
-        setState({ loading: false, data: null, error: 'Unable to load videos right now.' });
+        if (mounted.current) {
+          setState({ loading: false, data: null, error: 'Unable to load videos right now.' });
+        }
       }
     })();
+    return () => { mounted.current = false; };
   }, []);
 
   const categories = useMemo(() => {
@@ -45,7 +70,7 @@ export default function Videos() {
       <SectionHead
         eyebrow="Channel library"
         title="Videos"
-        sub="Published videos and everything coming soon to The Tech Guider."
+        sub="Published videos and everything coming soon to The Tech Guider 01."
       />
 
       <div className="flex gap-2 flex-wrap align-center mb-2">
@@ -73,18 +98,29 @@ export default function Videos() {
         </div>
       </div>
 
-      {state.loading && <Spinner label="Loading videos…" />}
+      {/* Loading: Skeleton cards with shimmer */}
+      {state.loading && (
+        <div className="video-grid">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      )}
+
+      {/* Error: Clear message + retry */}
       {state.error && <ErrorState title="Unable to load videos" desc={state.error} retry={() => window.location.reload()} />}
 
-      {state.data && filtered.length === 0 && (
+      {/* Empty: Clean state when API returns no results */}
+      {state.data && !state.error && filtered.length === 0 && !state.loading && (
         <EmptyState
-          title={query ? 'No videos match your search' : 'No videos yet'}
-          desc="Videos added by the owner will appear here."
+          title={query ? 'No videos match your search' : 'NO VIDEOS AVAILABLE'}
+          desc="Videos added by the owner or from YouTube will appear here."
         />
       )}
 
-      {state.data && filtered.length > 0 && (
-        <div className="video-grid">
+      {/* Success: Real data with fade-in transition */}
+      {state.data && !state.error && filtered.length > 0 && !state.loading && (
+        <div className={`video-grid${showContent ? ' content-visible' : ''}`}>
           {filtered.map((v) => (
             <VideoCard key={v.id} video={v} />
           ))}

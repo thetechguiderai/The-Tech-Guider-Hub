@@ -108,6 +108,9 @@ router.post('/regenerate-code', requireOwner, (req, res) => {
 
 // ------------------------------- overview -----------------------------------
 router.get('/overview', requireOwner, (req, res) => {
+  const yt = getYtSettings();
+  const ytStats = yt && yt.cachedStats && yt.cachedStats.cachedAt ? yt.cachedStats : null;
+  const ytSt = ytStats && ytStats.statistics ? ytStats.statistics : null;
   const counts = {
     resources: db.prepare('SELECT COUNT(*) c FROM resources').get().c,
     videos: db.prepare('SELECT COUNT(*) c FROM videos').get().c,
@@ -118,6 +121,11 @@ router.get('/overview', requireOwner, (req, res) => {
     rewardInventory: db.prepare('SELECT COUNT(*) c FROM reward_codes').get().c,
     sensitivityProfiles: db.prepare('SELECT COUNT(*) c FROM sensitivity_profiles').get().c,
     announcements: db.prepare('SELECT COUNT(*) c FROM announcements WHERE active = 1').get().c,
+    youtubeStatsAvailable: !!ytSt,
+    youtubeVideoCount: ytSt ? ytSt.videoCount : 0,
+    youtubeSubscribers: ytSt ? ytSt.subscriberCount : 0,
+    youtubeViews: ytSt ? ytSt.viewCount : 0,
+    youtubeLastRefresh: ytStats ? ytStats.cachedAt : '',
   };
 
   const recent = db.prepare(
@@ -131,6 +139,15 @@ router.get('/overview', requireOwner, (req, res) => {
      GROUP BY day ORDER BY day ASC`
   ).all();
 
+  const trend30 = db.prepare(
+    `SELECT date(created_at) AS day,
+            COALESCE(SUM(CASE WHEN event_type = 'pageview' THEN 1 ELSE 0 END), 0) AS pageviews,
+            COALESCE(SUM(CASE WHEN event_type IN ('resource_click','video_click') THEN 1 ELSE 0 END), 0) AS clicks
+     FROM analytics_events
+     WHERE created_at >= datetime('now', '-30 days')
+     GROUP BY day ORDER BY day ASC`
+  ).all();
+
   const topResources = db.prepare(
     'SELECT name, clicks FROM resources ORDER BY clicks DESC LIMIT 6'
   ).all();
@@ -140,7 +157,7 @@ router.get('/overview', requireOwner, (req, res) => {
      WHERE event_type = 'search' GROUP BY detail ORDER BY count DESC LIMIT 5`
   ).all();
 
-  res.json({ counts, recent, pageViews14, topResources, topSearch });
+  res.json({ counts, recent, pageViews14, trend30, topResources, topSearch });
 });
 
 // -------------------------------- videos ------------------------------------
@@ -641,6 +658,33 @@ router.post('/audit-logs/clear', requireOwner, (req, res) => {
   db.prepare('DELETE FROM audit_logs').run();
   audit('audit_logs_cleared', { result: 'success', ip: ownerIp(req) });
   res.json({ ok: true });
+});
+
+// --------------------------------- backup ------------------------------------
+router.get('/backup', requireOwner, (req, res) => {
+  const tables = [
+    'videos', 'resources', 'video_resources', 'minecraft_listings',
+    'reward_codes', 'announcements', 'sensitivity_profiles',
+    'youtube_settings', 'settings', 'owners', 'audit_logs', 'analytics_events',
+  ];
+  const dump = {};
+  for (const t of tables) {
+    const exists = db.prepare(
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`
+    ).get(t);
+    if (exists) dump[t] = db.prepare(`SELECT * FROM "${t}"`).all();
+  }
+  const meta = {
+    app: 'the-tech-guider-hub',
+    exportedAt: new Date().toISOString(),
+    counts: Object.fromEntries(Object.entries(dump).map(([k, rows]) => [k, rows.length])),
+  };
+  audit('backup_exported', { result: 'success', detail: `${Object.keys(dump).length} tables`, ip: ownerIp(req) });
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename="tech-guider-backup-${new Date().toISOString().slice(0, 10)}.json"`
+  );
+  res.json({ meta, tables: dump });
 });
 
 module.exports = router;

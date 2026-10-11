@@ -41,10 +41,10 @@ function insertSQL(table, cols, values) {
     const videoId = Number(info.lastInsertRowid);
 
     const resourceRows = [
-      ['MC Server Host', 'https://mcserverhost.example', '', 'Solid free & paid plans for Java servers.', 'Hosting', 0],
-      ['Magmanode', 'https://magmanode.example', '', 'Affordable Minecraft hosting with free tier.', 'Hosting', 1],
-      ['Seadloaf Hosting', 'https://seadloaf.example', '', 'Reliable low-cost hosting with good support.', 'Hosting', 0],
-      ['Play Hosting', 'https://playhosting.example', '', 'Budget-friendly server hosting options.', 'Hosting', 0],
+      ['MC Server Host', 'https://mcserverhost.com', '', 'Solid free & paid plans for Java servers.', 'Hosting', 0],
+      ['Magmanode', 'https://magmanode.com', '', 'Affordable Minecraft hosting with free tier.', 'Hosting', 1],
+      ['Seadloaf Hosting', 'https://seadloaf.com', '', 'Reliable low-cost hosting with good support.', 'Hosting', 0],
+      ['Play Hosting', 'https://playhosting.com', '', 'Budget-friendly server hosting options.', 'Hosting', 0],
     ];
     db.prepare('BEGIN');
     try {

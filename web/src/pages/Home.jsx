@@ -6,11 +6,30 @@ import { useMeta } from '../App';
 import { SectionHead, Badge, Icon } from '../components/ui';
 import { VideoCard } from '../components/cards';
 import YoutubeStats from '../components/YoutubeStats';
+import { motion, useReducedMotion } from 'framer-motion';
+
+function RevealSection({ children }) {
+  const reduce = useReducedMotion();
+  const initial = reduce ? false : { opacity: 0, y: 12 };
+  return (
+    <motion.section
+      initial={initial}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.15 }}
+      transition={{ duration: 0.28, ease: 'easeOut' }}
+      style={{ animationFillMode: 'both' }}
+    >
+      {children}
+    </motion.section>
+  );
+}
+
+RevealSection.displayName = 'RevealSection';
 
 export default function Home() {
   useMeta(
-    'The Tech Guider Hub — Resources, Tools & More',
-    'Everything from The Tech Guider in one place. Video resources, tools, the Free Fire sensitivity generator, Minecraft hub, YouTube stats and more.'
+    'The Tech Guider 01 — Technology, Gaming & Tutorials',
+    'The official Tech Guider 01 hub for technology, gaming, tutorials, Minecraft, Free Fire and useful digital tools.'
   );
   const { site } = useSite();
   const [comingSoon, setComingSoon] = useState([]);
@@ -34,58 +53,56 @@ export default function Home() {
   return (
     <>
       {/* HERO */}
+      <RevealSection>
       <section className="hero">
         <div className="hero-bg" aria-hidden="true">
           <div className="hero-grid-lines" />
           <div className="hero-glow a" />
           <div className="hero-glow b" />
         </div>
-        <div className="container" style={{ position: 'relative' }}>
+        <div className="container hero-content">
           <div className="hero-badge">
             <span className="dot" aria-hidden="true" />
-            Official resource hub
+            Official YouTube Channel
           </div>
-          <h1>
-            THE TECH GUIDER <span className="hero-mark">HUB</span>
-          </h1>
-          <p className="hero-sub">{site?.tagline || 'Everything from The Tech Guider, in one place.'}</p>
+          <h1>THE TECH GUIDER 01</h1>
+          <p className="hero-sub">{site?.tagline || 'Technology • Gaming • Tutorials • Tools'}</p>
           <div className="hero-actions">
-            <Link to="/resources" className="btn btn-primary btn-lg">
-              Explore Resources
-            </Link>
             <a
-              className="btn btn-ghost btn-lg"
+              className="btn btn-primary btn-lg"
               href={site?.social?.youtube || 'https://www.youtube.com/'}
               target="_blank"
               rel="noopener noreferrer"
             >
-              <Icon.youtube size={18} /> YouTube Channel
+              WATCH ON YOUTUBE
             </a>
-            <Link to="/ai" className="btn btn-ghost btn-lg">
-              <Icon.ai size={18} /> The Tech Guider AI
+            <Link to="/resources" className="btn btn-ghost btn-lg">
+              EXPLORE HUB
             </Link>
           </div>
         </div>
       </section>
+    </RevealSection>
 
-      {/* QUICK NAV */}
-      <section className="container" aria-label="Quick navigation">
-        <div className="grid-hero-nav">
-          {quickNav.map(({ to, icon: IconComp, title, desc }) => (
-            <Link key={title + to} to={to} className="card card-hover" style={{ textDecoration: 'none' }}>
-              <div className="flex align-center gap-2">
-                <span className="resource-logo fallback" aria-hidden="true">
-                  <IconComp size={20} />
-                </span>
-                <h3 className="resource-name">{title}</h3>
-              </div>
-              <p className="text-sm muted mt-2">{desc}</p>
-            </Link>
-          ))}
-        </div>
-      </section>
+    {/* QUICK NAV */}
+    <section className="container" aria-label="Quick navigation">
+      <div className="grid-hero-nav">
+        {quickNav.map(({ to, icon: IconComp, title, desc }) => (
+          <Link key={title + to} to={to} className="card card-hover" style={{ textDecoration: 'none' }}>
+            <div className="flex align-center gap-2">
+              <span className="resource-logo fallback" aria-hidden="true">
+                <IconComp size={20} />
+              </span>
+              <h3 className="resource-name">{title}</h3>
+            </div>
+            <p className="text-sm muted mt-2">{desc}</p>
+          </Link>
+        ))}
+      </div>
+    </section>
 
-      {/* COMING SOON */}
+    {/* COMING SOON */}
+    <RevealSection>
       {comingSoon.length > 0 && (
         <section className="container mt-4" aria-labelledby="home-coming-heading">
           <SectionHead
@@ -105,13 +122,17 @@ export default function Home() {
           </div>
         </section>
       )}
+    </RevealSection>
 
-      {/* YOUTUBE STATS */}
+    {/* YOUTUBE STATS */}
+    <RevealSection>
       <section className="container mt-4">
         <YoutubeStats />
       </section>
+    </RevealSection>
 
-      {/* AI PANEL */}
+    {/* AI PANEL */}
+    <RevealSection>
       <section className="container mt-4" aria-label="The Tech Guider AI">
         <div className="card" style={{ background: 'var(--bg-2)', padding: 36, borderColor: 'var(--border)' }}>
           <div className="flex align-center gap-2 flex-wrap justify-between">
@@ -126,8 +147,10 @@ export default function Home() {
           </div>
         </div>
       </section>
+    </RevealSection>
 
-      {/* SOCIAL STRIP */}
+    {/* SOCIAL STRIP */}
+    <RevealSection>
       <section className="container mt-4" aria-label="Follow The Tech Guider">
         <div className="text-center" style={{ textAlign: 'center' }}>
           <div className="eyebrow mb-2">Stay connected</div>
@@ -161,6 +184,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+    </RevealSection>
     </>
   );
 }

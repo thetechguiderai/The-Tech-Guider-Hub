@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Icon, Badge } from './ui';
 import { publicApi } from '../api';
 
@@ -9,8 +10,16 @@ export function formatThumbFallback(title) {
 
 export function VideoCard({ video }) {
   const coming = video.status === 'coming_soon';
+  const reduce = useReducedMotion();
   return (
-    <article className="video-card">
+    <motion.article
+      className="video-card"
+      initial={reduce ? false : { opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={reduce ? undefined : { y: -4, transition: { duration: 0.2, ease: 'easeOut' } }}
+      whileTap={reduce ? undefined : { scale: 0.99 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+    >
       <Link to={`/videos/${video.id}`} aria-label={video.title} tabIndex={-1}>
         <div className="video-thumb-wrap">
           {video.thumbnail ? (
@@ -46,14 +55,23 @@ export function VideoCard({ video }) {
         </div>
         {video.description && <p className="text-sm muted clamp-2 mt-1">{video.description}</p>}
       </div>
-    </article>
+    </motion.article>
   );
 }
 
 export function ResourceCard({ resource, highlight }) {
   const letter = (resource.name || '?').slice(0, 2).toUpperCase();
+  const reduce = useReducedMotion();
   return (
-    <div className={`resource-card${highlight ? ' card-hover' : ''}`} id={highlight ? `resource-${resource.id}` : undefined}>
+    <motion.div
+      className={`resource-card${highlight ? ' card-hover' : ''}`}
+      id={highlight ? `resource-${resource.id}` : undefined}
+      initial={reduce ? false : { opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={reduce ? undefined : { y: -3, transition: { duration: 0.18, ease: 'easeOut' } }}
+      whileTap={reduce ? undefined : { scale: 0.99 }}
+      transition={{ duration: 0.18, ease: 'easeOut' }}
+    >
       <div className="flex align-center gap-2">
         {resource.logo ? (
           <img className="resource-logo" src={resource.logo} alt={`${resource.name} logo`} loading="lazy" />
@@ -92,6 +110,6 @@ export function ResourceCard({ resource, highlight }) {
           <span className="text-xs muted3">{resource.clicks} click{resource.clicks === 1 ? '' : 's'}</span>
         ) : null}
       </div>
-    </div>
+    </motion.div>
   );
 }

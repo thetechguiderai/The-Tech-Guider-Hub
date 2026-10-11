@@ -193,7 +193,7 @@ function setSetting(key, value) {
 }
 
 const DEFAULT_SETTINGS = {
-  youtube: 'https://www.youtube.com/@TheTechGuider',
+  youtube: 'https://www.youtube.com/@thetechguider01',
   discord: '',
   instagram: '',
   tiktok: '',

@@ -37,7 +37,7 @@ export const publicApi = {
   generateSensitivity: (payload) =>
     request('/api/public/sensitivity/generate', { method: 'POST', body: JSON.stringify(payload) }),
   analytics: (type, target, detail) =>
-    request('/api/analytics', {
+    request('/api/public/analytics', {
       method: 'POST',
       body: JSON.stringify({ type, target, detail }),
     }).catch(() => null),
@@ -96,4 +96,5 @@ export const ownerApi = {
 
   auditLogs: (limit = 100) => request(`/api/owner/audit-logs?limit=${limit}`),
   clearAudit: () => request('/api/owner/audit-logs/clear', { method: 'POST' }),
+  backup: () => request('/api/owner/backup'),
 };

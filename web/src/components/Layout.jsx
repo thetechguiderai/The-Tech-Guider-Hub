@@ -12,26 +12,25 @@ export const NAV = [
   { to: '/free-fire-sensitivity', label: 'FF Sensitivity' },
   { to: '/minecraft', label: 'Minecraft' },
   { to: '/ai', label: 'Tech Guider AI' },
+  { to: '/website-packages', label: 'Website' },
+  { to: '/games-packages', label: 'Games' },
+  { to: '/logo-packages', label: 'Logo' },
+  { to: '/team', label: 'Team' },
   { to: '/about', label: 'About' },
 ];
 
 function Logo({ small }) {
-  const { site } = useSite();
   return (
-    <Link to="/" className="brand" aria-label="The Tech Guider Hub — Home">
-      {site?.logoUrl ? (
-        <img
-          src={site.logoUrl}
-          alt="The Tech Guider logo"
-          width="32"
-          height="32"
-          className="brand-mark"
-          style={{ objectFit: 'contain', background: 'transparent', border: 'none' }}
-        />
-      ) : (
-        <span className="brand-mark">{small ? <Icon.ai size={17} /> : <Icon.ai size={17} />}</span>
-      )}
-      <span className={small ? '' : 'hide-mobile'}>The Tech Guider Hub</span>
+    <Link to="/" className="brand" aria-label="The Tech Guider 01 — Home">
+      <img
+        src="/logo.svg"
+        alt="The Tech Guider 01"
+        width="36"
+        height="36"
+        className="brand-mark"
+        style={{ objectFit: 'contain', borderRadius: 8 }}
+      />
+      <span className={small ? '' : 'hide-mobile'}>The Tech Guider 01</span>
     </Link>
   );
 }
@@ -43,6 +42,15 @@ function Header({ onOpenSearch }) {
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileOpen]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -80,17 +88,18 @@ function Header({ onOpenSearch }) {
               </Link>
               <button
                 className="burger"
-                aria-label="Open menu"
+                aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
                 aria-expanded={mobileOpen}
                 onClick={() => setMobileOpen((v) => !v)}
               >
-                <Icon.menu size={20} />
+                {mobileOpen ? <Icon.close size={20} /> : <Icon.menu size={20} />}
               </button>
             </div>
           </div>
         </div>
       </header>
 
+      {/* Mobile Navigation */}
       <div className={`mobile-nav${mobileOpen ? ' open' : ''}`} onClick={() => setMobileOpen(false)}>
         <div className="mobile-nav-panel" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Mobile navigation">
           <div className="mobile-nav-head">
@@ -108,12 +117,12 @@ function Header({ onOpenSearch }) {
               {n.label}
             </NavLink>
           ))}
-          <div className="ht" style={{ height: 8 }} />
+          <div style={{ height: 8 }} />
           <NavLink to="/owner" className="mobile-nav-link">
             Owner Access
           </NavLink>
           <div className="mobile-nav-foot">
-            Built for The Tech Guider community.
+            Built for The Tech Guider 01 community.
           </div>
         </div>
       </div>
@@ -221,12 +230,12 @@ function SearchModal({ open, onClose }) {
 
         <div className="search-results">
           {!results && !loading && (
-            <div className="search-empty">Try “Minecraft”, “Free Fire”, or “hosting”.</div>
+            <div className="search-empty">Try "Minecraft", "Free Fire", or "hosting".</div>
           )}
           {!results && loading && <Spinner />}
           {results && results.error && <div className="search-empty">{results.error}</div>}
           {results && !results.error && total === 0 && (
-            <div className="search-empty">No results for “{query}”.</div>
+            <div className="search-empty">No results for "{query}".</div>
           )}
           {results && results.videos?.length > 0 && (
             <SearchGroup label="Videos">
@@ -325,7 +334,8 @@ function Footer() {
         <div className="footer-grid">
           <div className="footer-brand">
             <Logo />
-            <p>Built for The Tech Guider community.</p>
+            <p>The Tech Guider 01</p>
+            <p>Technology • Gaming • Tutorials • Tools</p>
           </div>
           <div className="footer-col">
             <h5>Explore</h5>
@@ -335,6 +345,10 @@ function Footer() {
               ['/tools', 'Tools'],
               ['/minecraft', 'Minecraft'],
               ['/free-fire-sensitivity', 'FF Sensitivity'],
+              ['/website-packages', 'Website'],
+              ['/games-packages', 'Games'],
+              ['/logo-packages', 'Logo'],
+              ['/team', 'Team'],
             ].map(([to, label]) => (
               <Link key={to} to={to}>{label}</Link>
             ))}
@@ -372,8 +386,7 @@ function Footer() {
           </div>
         </div>
         <div className="footer-bottom">
-          <span>© {new Date().getFullYear()} The Tech Guider Hub</span>
-          <span>{site?.tagline || 'Everything from The Tech Guider, in one place.'}</span>
+          <span>© {new Date().getFullYear()} The Tech Guider 01. All rights reserved.</span>
         </div>
       </div>
     </footer>
@@ -395,7 +408,9 @@ export default function Layout({ children }) {
       <AnnouncementBar />
       <Header onOpenSearch={openSearch} />
       <main className="site-main" id="main-content">
-        {children}
+        <div className="page-transition" key={location.pathname}>
+          {children}
+        </div>
       </main>
       <Footer />
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />

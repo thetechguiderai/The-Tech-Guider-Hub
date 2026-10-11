@@ -13,6 +13,10 @@ import Minecraft from './pages/Minecraft';
 import Sensitivity from './pages/Sensitivity';
 import AIPage from './pages/AIPage';
 import About from './pages/About';
+import WebsitePackages from './pages/WebsitePackages';
+import GamesPackages from './pages/GamesPackages';
+import LogoPackages from './pages/LogoPackages';
+import Team from './pages/Team';
 import Owner from './pages/Owner';
 import Dashboard from './pages/dashboard/Dashboard';
 import NotFound from './pages/NotFound';
@@ -30,7 +34,7 @@ function useMeta(title, description) {
       el.setAttribute('content', description);
     } else if (title) {
       let el = document.querySelector('meta[name="description"]');
-      if (el) el.setAttribute('content', 'Everything from The Tech Guider in one place. Resources, tools, the Free Fire sensitivity generator, Minecraft hub and more.');
+      if (el) el.setAttribute('content', 'The official Tech Guider 01 hub for technology, gaming, tutorials, Minecraft, Free Fire and useful digital tools.');
     }
   }, [title, description]);
 }
@@ -43,94 +47,28 @@ export default function App() {
     publicApi
       .bootstrap()
       .then(setSite)
-      .catch(() => setSite({ sitename: 'The Tech Guider Hub' }));
+      .catch(() => setSite({ sitename: 'The Tech Guider 01' }));
   }, []);
 
   return (
     <SiteContext.Provider value={{ site }}>
       <Routes>
-        <Route
-          path="/"
-          element={
-            <Layout>
-              <Home />
-            </Layout>
-          }
-        />
-        <Route
-          path="/resources"
-          element={
-            <Layout>
-              <Resources />
-            </Layout>
-          }
-        />
-        <Route
-          path="/videos"
-          element={
-            <Layout>
-              <Videos />
-            </Layout>
-          }
-        />
-        <Route
-          path="/videos/:id"
-          element={
-            <Layout>
-              <VideoDetail />
-            </Layout>
-          }
-        />
-        <Route
-          path="/tools"
-          element={
-            <Layout>
-              <Tools />
-            </Layout>
-          }
-        />
-        <Route
-          path="/free-fire-sensitivity"
-          element={
-            <Layout>
-              <Sensitivity />
-            </Layout>
-          }
-        />
-        <Route
-          path="/minecraft"
-          element={
-            <Layout>
-              <Minecraft />
-            </Layout>
-          }
-        />
-        <Route
-          path="/ai"
-          element={
-            <Layout>
-              <AIPage />
-            </Layout>
-          }
-        />
-        <Route
-          path="/about"
-          element={
-            <Layout>
-              <About />
-            </Layout>
-          }
-        />
+        <Route path="/" element={<Layout><Home /></Layout>} />
+        <Route path="/resources" element={<Layout><Resources /></Layout>} />
+        <Route path="/videos" element={<Layout><Videos /></Layout>} />
+        <Route path="/videos/:id" element={<Layout><VideoDetail /></Layout>} />
+        <Route path="/tools" element={<Layout><Tools /></Layout>} />
+        <Route path="/free-fire-sensitivity" element={<Layout><Sensitivity /></Layout>} />
+        <Route path="/minecraft" element={<Layout><Minecraft /></Layout>} />
+        <Route path="/ai" element={<Layout><AIPage /></Layout>} />
+        <Route path="/about" element={<Layout><About /></Layout>} />
+        <Route path="/website-packages" element={<Layout><WebsitePackages /></Layout>} />
+        <Route path="/games-packages" element={<Layout><GamesPackages /></Layout>} />
+        <Route path="/logo-packages" element={<Layout><LogoPackages /></Layout>} />
+        <Route path="/team" element={<Layout><Team /></Layout>} />
         <Route path="/owner" element={<Owner />} />
-        <Route path="/owner/*" element={<Dashboard />} />
-        <Route
-          path="*"
-          element={
-            <Layout>
-              <NotFound />
-            </Layout>
-          }
-        />
+        <Route path="/owner/dashboard/*" element={<Dashboard />} />
+        <Route path="*" element={<Layout><NotFound /></Layout>} />
       </Routes>
     </SiteContext.Provider>
   );

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ownerApi } from '../../api';
-import { Spinner, ErrorState, MiniBarChart, timeAgo, Icon } from '../../components/ui';
+import { Spinner, ErrorState, MiniBarChart, timeAgo, formatNum, Icon } from '../../components/ui';
+import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 function Stat({ n, l }) {
   return (
@@ -11,6 +12,15 @@ function Stat({ n, l }) {
     </div>
   );
 }
+
+const QUICK = [
+  { to: '/owner/dashboard/videos?new=1', label: 'Add video', icon: Icon.video },
+  { to: '/owner/dashboard/resources?new=1', label: 'Add resource', icon: Icon.resource },
+  { to: '/owner/dashboard/announcements?new=1', label: 'Announcement', icon: Icon.alert },
+  { to: '/owner/dashboard/rewards?new=1', label: 'Add reward', icon: Icon.star },
+  { to: '/owner/dashboard/youtube', label: 'YouTube', icon: Icon.chart },
+  { to: '/owner/dashboard/audit', label: 'Audit logs', icon: Icon.list },
+];
 
 export default function Overview() {
   const [state, setState] = useState({ loading: true, data: null, error: null });
@@ -33,12 +43,23 @@ export default function Overview() {
 
   return (
     <div>
+      <div className="quick-actions" aria-label="Quick actions">
+        {QUICK.map((q) => {
+          const C = q.icon;
+          return (
+            <Link key={q.label} to={q.to} className="quick-action">
+              <C size={15} /> {q.label}
+            </Link>
+          );
+        })}
+      </div>
+
       <div className="dash-cards">
         <Stat n={c.resources} l="Total resources" />
         <Stat n={c.videos} l="Total videos" />
         <Stat n={c.comingSoon} l="Coming soon videos" />
         <Stat n={c.resourceClicks} l="Resource clicks" />
-        <Stat n={c.youtubeVideoCount ?? '—'} l="YouTube videos" />
+        <Stat n={c.youtubeStatsAvailable ? formatNum(c.youtubeSubscribers) : '—'} l="YouTube subscribers" />
         <Stat n={c.minecraftListings} l="Minecraft listings" />
         <Stat n={c.rewardInventory} l="Reward inventory" />
         <Stat n={c.announcements} l="Active announcements" />
@@ -105,6 +126,34 @@ export default function Overview() {
             <p className="text-sm muted3">No searches yet.</p>
           )}
         </div>
+      </div>
+
+      {/* Recharts: real traffic from analytics_events (30 days) */}
+      <div className="card mt-2" style={{ marginTop: 16 }}>
+        <div className="flex align-center justify-between">
+          <h3 style={{ fontSize: 16 }}>Traffic — last 30 days</h3>
+          {c.youtubeStatsAvailable && (
+            <span className="text-xs muted3">YouTube: {formatNum(c.youtubeViews)} views · {formatNum(c.youtubeVideoCount)} videos</span>
+          )}
+        </div>
+        {state.data.trend30.length > 0 ? (
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={state.data.trend30} margin={{ top: 16, right: 24, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke="#ffffff14" strokeDasharray="3 3" />
+              <XAxis dataKey="day" stroke="#6b7280" tick={{ fontSize: 11, fill: '#9ca3af' }} tickLine={false} axisLine={{ stroke: '#26272b' }} />
+              <YAxis stroke="#6b7280" tick={{ fontSize: 11, fill: '#9ca3af' }} tickLine={false} axisLine={false} width={36} />
+              <Tooltip
+                contentStyle={{ background: '#111419', border: '1px solid #26272b', borderRadius: 10, fontSize: 12.5, color: '#e5e7eb' }}
+                labelStyle={{ color: '#9ca3af' }}
+              />
+              <Legend verticalAlign="top" height={40} wrapperStyle={{ fontSize: 12.5 }} />
+              <Line type="monotone" dataKey="pageviews" name="Page views" stroke="#e5e7eb" strokeWidth={2} dot={{ r: 2.5, fill: '#e5e7eb' }} activeDot={{ r: 4 }} />
+              <Line type="monotone" dataKey="clicks" name="Resource clicks" stroke="#6b7280" strokeWidth={2} dot={{ r: 2.5, fill: '#6b7280' }} activeDot={{ r: 4 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <p className="text-sm muted3">No traffic recorded yet.</p>
+        )}
       </div>
     </div>
   );

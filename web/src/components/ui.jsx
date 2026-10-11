@@ -49,6 +49,7 @@ export const Icon = {
   edit: (p) => <Svg {...p}><path d="M4 20h16" /><path d="M5 16l9.5-9.5 3 3L8 19H5z" /></Svg>,
   trash: (p) => <Svg {...p}><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13h10l1-13" /></Svg>,
   refresh: (p) => <Svg {...p}><path d="M20 11a8 8 0 1 0-2.5 6.5M20 4v7h-7" /></Svg>,
+  download: (p) => <Svg {...p}><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M4 21h16" /></Svg>,
   copy: (p) => <Svg {...p}><rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></Svg>,
   logout: (p) => <Svg {...p}><path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3" /><path d="M15 17l5-5-5-5M20 12H9" /></Svg>,
   chevronDown: (p) => <Svg {...p}><path d="m6 9 6 6 6-6" /></Svg>,
@@ -71,7 +72,7 @@ export function Spinner({ label }) {
 
 export function EmptyState({ title, desc, action }) {
   return (
-    <div className="state">
+    <div className="state state-animate">
       <div className="state-icon">
         <Icon.grid size={22} />
       </div>
@@ -84,7 +85,7 @@ export function EmptyState({ title, desc, action }) {
 
 export function ErrorState({ title, desc, retry }) {
   return (
-    <div className="state" role="alert">
+    <div className="state state-animate" role="alert">
       <div className="state-icon" style={{ color: 'var(--danger)' }}>
         <Icon.alert size={22} />
       </div>

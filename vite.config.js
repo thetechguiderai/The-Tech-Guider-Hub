@@ -26,4 +26,9 @@ export default defineConfig({
       '/uploads': 'http://localhost:4500',
     },
   },
+  resolve: {
+    alias: {
+      'react-dom': 'react-dom', // Ensure react-dom resolves correctly
+    },
+  },
 });

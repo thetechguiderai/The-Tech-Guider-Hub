@@ -28,6 +28,11 @@ export default function ResourcesAdmin() {
 
   useEffect(() => { load(); }, []);
 
+  // Quick action support: /owner/dashboard/resources?new=1 opens the create modal
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('new') === '1') setEditing({ ...EMPTY });
+  }, []);
+
   async function save() {
     setSaving(true);
     try {

@@ -13,6 +13,8 @@ export default function SettingsAdmin({ mode }) {
   const [notice, setNotice] = useState(null);
   const [regenerating, setRegenerating] = useState(false);
   const [newCode, setNewCode] = useState(null);
+  const [backingUp, setBackingUp] = useState(false);
+  const [backupInfo, setBackupInfo] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -70,6 +72,31 @@ export default function SettingsAdmin({ mode }) {
   if (state.loading) return <Spinner label="Loading settings…" />;
   if (state.error) return <ErrorState title="Settings unavailable" desc={state.error} />;
 
+  async function downloadBackup() {
+    setBackingUp(true);
+    setNotice(null);
+    try {
+      const data = await ownerApi.backup();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tech-guider-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      const parts = Object.entries(data.tables || {})
+        .filter(([, rows]) => rows.length > 0)
+        .map(([k, rows]) => `${k}: ${rows.length}`);
+      setBackupInfo(parts.length ? parts.join(' · ') : 'All tables are empty.');
+    } catch (e) {
+      setNotice(e.message || 'Backup failed.');
+    } finally {
+      setBackingUp(false);
+    }
+  }
+
   return (
     <div style={{ maxWidth: 780 }}>
       {notice && <div className="alert alert-success mb-2" role="status">{notice}</div>}
@@ -124,6 +151,26 @@ export default function SettingsAdmin({ mode }) {
         <button className="btn btn-accent" onClick={save} disabled={saving}>
           {saving ? 'Saving…' : 'Save settings'}
         </button>
+      </div>
+
+      <div className="card" style={{ borderColor: 'rgba(239,68,68,0.3)', background: 'var(--bg-2)' }}>
+        <h3 style={{ fontSize: 16, marginBottom: 8 }}>
+          <span style={{ verticalAlign: 'middle', marginRight: 8 }}><Icon.download size={16} /></span>
+          Data backup
+        </h3>
+        <p className="text-sm muted" style={{ marginBottom: 12 }}>
+          Export the whole site database as a JSON file — videos, resources, listings, rewards, announcements,
+          audit logs and analytics. Nothing is sent anywhere; the file is generated on this server and
+          downloaded to your device.
+        </p>
+        <button className="btn btn-ghost btn-sm" onClick={downloadBackup} disabled={backingUp}>
+          <Icon.download size={14} /> {backingUp ? 'Preparing…' : 'Download full backup'}
+        </button>
+        {backupInfo && (
+          <div className="alert alert-success mt-1" style={{ marginTop: 12 }} role="status">
+            <div className="text-xs" style={{ lineHeight: 1.6 }}>{backupInfo}</div>
+          </div>
+        )}
       </div>
 
       <div className="card" style={{ borderColor: 'rgba(239,68,68,0.3)', background: 'var(--bg-2)' }}>
