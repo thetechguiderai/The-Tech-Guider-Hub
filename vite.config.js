@@ -11,13 +11,9 @@ export default defineConfig({
     sourcemap: false,
     assetsInlineLimit: 4096,
     modulePreload: { polyfill: true },
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          react: ['react', 'react-dom', 'react-router-dom'],
-        },
-      },
-    },
+    // Single-bundle build (no manual chunks): every deploy gets fresh
+    // content-addressed asset URLs, so stale edge/CDN cache can never collide
+    // with older ESM/CJS-compiled files the way it did with chunked builds.
   },
   server: {
     port: 5173,
