@@ -5,7 +5,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const crypto = require('node:crypto');
 const express = require('express');
-const { db, dbPath } = require('./db');
+const { db, dbPath, dataDir } = require('./db');
 const { requireSecret, rateLimit, audit } = require('./security');
 const publicRoutes = require('./routes/public');
 const ownerRoutes = require('./routes/owner');
@@ -17,6 +17,16 @@ const ownerCount = db.prepare('SELECT COUNT(*) AS c FROM owners').get().c;
 if (ownerCount === 0 && process.env.OWNER_ACCESS_CODE_HASH) {
   db.prepare('INSERT INTO owners (code_hash) VALUES (?)').run(process.env.OWNER_ACCESS_CODE_HASH);
   console.log('[owner] Seeded initial owner access code hash from environment.');
+}
+
+// ---- Starter content on ephemeral hosts (Vercel): fresh DB on cold start ----
+if (process.env.VERCEL) {
+  try {
+    const { seedAll } = require('./seed');
+    seedAll();
+  } catch (e) {
+    console.error('[seed] Auto-seed failed:', e && e.message);
+  }
 }
 
 const app = express();
@@ -38,7 +48,7 @@ const SPA_HEADERS = {
 };
 
 // ---- Uploaded owner assets (thumbnails, logos) ----
-const uploadsDir = path.join(__dirname, '..', 'data', 'uploads');
+const uploadsDir = path.join(dataDir, 'uploads');
 fs.mkdirSync(uploadsDir, { recursive: true });
 app.use('/uploads', express.static(uploadsDir, { maxAge: '30d', immutable: false }));
 
@@ -187,9 +197,16 @@ setInterval(() => {
 }, 60 * 60 * 1000).unref();
 
 const PORT = Number(process.env.PORT) || 4500;
-app.listen(PORT, () => {
-  console.log(`The Tech Guider Hub server running on http://localhost:${PORT}`);
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('  Build the frontend with: npm run build');
-  }
-});
+
+// When run on Vercel, export the Express app for the serverless runtime;
+// the platform starts the listener. Locally, keep the classic listen().
+if (process.env.VERCEL) {
+  module.exports = app;
+} else {
+  app.listen(PORT, () => {
+    console.log(`The Tech Guider Hub server running on http://localhost:${PORT}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('  Build the frontend with: npm run build');
+    }
+  });
+}

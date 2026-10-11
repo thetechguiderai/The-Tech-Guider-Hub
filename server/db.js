@@ -4,7 +4,11 @@ const { DatabaseSync } = require('node:sqlite');
 const path = require('node:path');
 const fs = require('node:fs');
 
-const dataDir = path.join(__dirname, '..', 'data');
+// On serverless hosts (Vercel) the filesystem is read-only except /tmp, and the
+// DB is ephemeral — point SQLite at /tmp so it can create and write the file.
+const dataDir = process.env.VERCEL
+  ? '/tmp/hub-data'
+  : path.join(__dirname, '..', 'data');
 fs.mkdirSync(dataDir, { recursive: true });
 
 const dbPath = process.env.NODE_ENV === 'test'
@@ -217,4 +221,4 @@ function ensureDefaults() {
 
 ensureDefaults();
 
-module.exports = { db, dbPath, now, getSettings, setSetting, DEFAULT_SETTINGS };
+module.exports = { db, dbPath, dataDir, now, getSettings, setSetting, DEFAULT_SETTINGS };

@@ -59,50 +59,85 @@ function videoRow(row) {
 }
 
 router.get('/videos', async (req, res) => {
-  // Try YouTube API first, fall back to database
+  // Database videos always come first (published + coming soon).
+  const rows = db.prepare(
+    `SELECT v.*, COALESCE(SUM(r.clicks), 0) AS clicks
+     FROM videos v
+     LEFT JOIN video_resources vr ON vr.video_id = v.id
+     LEFT JOIN resources r ON r.id = vr.resource_id
+     WHERE v.status IN ('published', 'coming_soon')
+     GROUP BY v.id
+     ORDER BY (v.status = 'coming_soon') DESC, v.sort_order ASC, v.updated_at DESC`
+  ).all();
+  const videos = rows.map(videoRow);
+
+  // When the channel is live, also surface the latest YouTube upload.
   const youtubeResult = await fetchFromYouTube();
   if (youtubeResult.available && youtubeResult.latestVideo) {
-    // Return the latest video from YouTube API
-    const video = youtubeResult.latestVideo;
-    const resources = db.prepare(
-      `SELECT r.id, r.name, r.url, r.logo, r.description, r.category, r.featured
-       FROM video_resources vr JOIN resources r ON r.id = vr.resource_id
-       WHERE vr.video_id = ? ORDER BY vr.sort_order ASC, r.sort_order ASC`
-    ).all(video.id);
-    res.json({
-      videos: [{
-        id: 'yt-latest-' + video.id,
-        title: video.title,
-        thumbnail: video.thumbnail,
-        youtubeUrl: video.url,
-        description: video.title,
+    const v = youtubeResult.latestVideo;
+    const already = videos.some((x) => x.youtubeUrl && x.youtubeUrl === v.url);
+    if (!already) {
+      const resources = db.prepare(
+        `SELECT r.id, r.name, r.url, r.logo, r.description, r.category, r.featured
+         FROM video_resources vr JOIN resources r ON r.id = vr.resource_id
+         WHERE vr.video_id = ? ORDER BY vr.sort_order ASC, r.sort_order ASC`
+      ).all(v.id);
+      videos.push({
+        id: 'yt-latest-' + v.id,
+        title: v.title,
+        thumbnail: v.thumbnail,
+        youtubeUrl: v.url,
+        description: v.title,
         category: 'Latest',
         status: 'published',
-        releaseDate: video.publishedAt,
+        releaseDate: v.publishedAt,
         featured: false,
         resources,
         clicks: 0,
         updatedAt: new Date().toISOString(),
-        isYouTubeApi: true
-      }]
-    });
-  } else {
-    // Fall back to database
-    const rows = db.prepare(
-      `SELECT v.*, COALESCE(SUM(r.clicks), 0) AS clicks
-       FROM videos v
-       LEFT JOIN video_resources vr ON vr.video_id = v.id
-       LEFT JOIN resources r ON r.id = vr.resource_id
-       WHERE v.status IN ('published', 'coming_soon')
-       GROUP BY v.id
-       ORDER BY (v.status = 'coming_soon') DESC, v.sort_order ASC, v.updated_at DESC`
-    ).all();
-    res.json({ videos: rows.map(videoRow) });
+        isYouTubeApi: true,
+      });
+    }
   }
+
+  res.json({ videos });
 });
 
-router.get('/videos/:id', (req, res) => {
-  const id = Number(req.params.id);
+router.get('/videos/:id', async (req, res) => {
+  const raw = String(req.params.id);
+
+  // YouTube-powered video (surfaced from the live channel).
+  if (raw.startsWith('yt-latest-')) {
+    const youtubeResult = await fetchFromYouTube();
+    const v = youtubeResult && youtubeResult.available && youtubeResult.latestVideo;
+    if (!v || raw !== 'yt-latest-' + v.id) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+    const resources = db.prepare(
+      `SELECT r.id, r.name, r.url, r.logo, r.description, r.category, r.featured
+       FROM video_resources vr JOIN resources r ON r.id = vr.resource_id
+       WHERE vr.video_id = ? ORDER BY vr.sort_order ASC, r.sort_order ASC`
+    ).all(v.id);
+    return res.json({
+      video: {
+        id: raw,
+        title: v.title,
+        thumbnail: v.thumbnail,
+        youtubeUrl: v.url,
+        description: v.title,
+        category: 'Latest',
+        status: 'published',
+        releaseDate: v.publishedAt,
+        featured: false,
+        resources,
+        clicks: 0,
+        updatedAt: new Date().toISOString(),
+        isYouTubeApi: true,
+      },
+    });
+  }
+
+  const id = Number(raw);
   const row = db.prepare('SELECT * FROM videos WHERE id = ?').get(id);
   if (!row || !['published', 'coming_soon'].includes(row.status)) {
     return res.status(404).json({ error: 'Video not found' });

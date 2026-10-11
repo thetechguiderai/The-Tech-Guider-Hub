@@ -3,13 +3,13 @@
 /**
  * Optional starter content so the hub is not empty when it first goes live.
  * Run with: npm run seed
+ * Can also be called from code via seedAll() — used at boot on ephemeral
+ * hosts (e.g. Vercel) where a fresh SQLite DB is created on every cold start.
  *
  * Only real, verifiable resources are seeded. No statistics are ever faked —
  * YouTube stats render an "unavailable" state until a real API key + channel
  * are configured by the owner.
  */
-
-require('./db');
 
 function insertSQL(table, cols, values) {
   const placeholders = values.map(() => '?').join(', ');
@@ -18,7 +18,7 @@ function insertSQL(table, cols, values) {
   return stmt.run(...values);
 }
 
-(async () => {
+function seedAll() {
   const { db } = require('./db');
 
   const videoCount = db.prepare('SELECT COUNT(*) AS c FROM videos').get().c;
@@ -85,6 +85,8 @@ function insertSQL(table, cols, values) {
       ]
     );
     console.log('Seeded starter Minecraft listings.');
+  } else {
+    console.log('Minecraft listings already exist — skipping.');
   }
 
   const annCount = db.prepare('SELECT COUNT(*) AS c FROM announcements').get().c;
@@ -95,7 +97,21 @@ function insertSQL(table, cols, values) {
       ['Welcome to The Tech Guider Hub', 'Everything from The Tech Guider in one place — check back often.', 'website', new Date().toISOString().slice(0, 10), '', 1]
     );
     console.log('Seeded a welcome announcement.');
+  } else {
+    console.log('Announcements already exist — skipping.');
   }
 
   console.log('Seed complete.');
-})();
+  return true;
+}
+
+if (require.main === module) {
+  try {
+    seedAll();
+  } catch (e) {
+    console.error(e);
+    process.exitCode = 1;
+  }
+}
+
+module.exports = { seedAll };
