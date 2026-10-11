@@ -43,7 +43,7 @@ export default function Home() {
 
   const quickNav = [
     { to: '/resources', icon: Icon.resource, title: 'Video Resources', desc: 'Everything used in the videos — hosts, tools and links.' },
-    { to: '/videos', icon: Icon.video, title: 'Coming Soon', desc: 'Upcoming videos and what is being prepared.' },
+    { to: '/videos', icon: Icon.video, title: 'Videos', desc: 'Latest uploads & coming-soon videos — straight from YouTube.' },
     { to: '/#youtube-stats', icon: Icon.chart, title: 'YouTube Stats', desc: 'Real channel statistics, straight from YouTube.' },
     { to: '/free-fire-sensitivity', icon: Icon.tool, title: 'FF Sensitivity', desc: 'Generate a Free Fire sensitivity setup for your device.' },
     { to: '/minecraft', icon: Icon.minecraft, title: 'Minecraft', desc: 'Java & Bedrock resources, hosting, tools and guides.' },

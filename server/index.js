@@ -97,7 +97,11 @@ app.get('/api/health', (req, res) => {
 
 // ---- SEO: robots + sitemap ----
 function baseUrl(req) {
-  return (process.env.BASE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+  // Behind Vercel's proxy req.protocol is http, so trust x-forwarded-proto first.
+  const proto = String(req.headers['x-forwarded-proto'] || '')
+    .split(',')[0]
+    .trim() || req.protocol || 'https';
+  return (process.env.BASE_URL || `${proto}://${req.get('host')}`).replace(/\/$/, '');
 }
 
 app.get('/robots.txt', (req, res) => {
