@@ -6,14 +6,25 @@ const DEFAULT_REFRESH_MS = 15 * 60 * 1000;
 
 function getSettings() {
   const row = db.prepare('SELECT * FROM youtube_settings WHERE id = 1').get() || {};
+  // YOUTUBE_CHANNEL_ID in the environment is the fallback so deploys that only
+  // provide env vars (e.g. Vercel) can show live stats without a DB write.
+  const envChannel = process.env.YOUTUBE_CHANNEL_ID || '';
   return {
-    channelId: row.channel_id || '',
+    channelId: row.channel_id || envChannel,
     refreshInterval: row.refresh_interval || 900,
     featuredVideo: row.featured_video || '',
     configStatus: row.config_status || 'not_configured',
     lastFetchAt: row.last_fetch_at || '',
     cachedStats: safeParse(row.cached_stats || '{}'),
   };
+}
+
+function tryDb(fn) {
+  try {
+    return fn();
+  } catch {
+    return null; // tolerate read-only / unavailable DB (e.g. ephemeral serverless FS)
+  }
 }
 
 function safeParse(str) {
@@ -25,15 +36,19 @@ function safeParse(str) {
 }
 
 function markConfigured(channelId) {
-  db.prepare(
-    `UPDATE youtube_settings SET channel_id = ?, config_status = ?, last_fetch_at = ? WHERE id = 1`
-  ).run(channelId, channelId ? 'configured' : 'not_configured', new Date().toISOString());
+  tryDb(() =>
+    db.prepare(
+      `UPDATE youtube_settings SET channel_id = ?, config_status = ?, last_fetch_at = ? WHERE id = 1`
+    ).run(channelId, channelId ? 'configured' : 'not_configured', new Date().toISOString())
+  );
 }
 
 function updateCache(payload) {
-  db.prepare(
-    'UPDATE youtube_settings SET cached_stats = ?, last_fetch_at = ? WHERE id = 1'
-  ).run(JSON.stringify(payload), new Date().toISOString());
+  tryDb(() =>
+    db.prepare(
+      'UPDATE youtube_settings SET cached_stats = ?, last_fetch_at = ? WHERE id = 1'
+    ).run(JSON.stringify(payload), new Date().toISOString())
+  );
 }
 
 let inFlight = null;
