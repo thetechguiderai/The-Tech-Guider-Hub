@@ -7,7 +7,7 @@
       "src": "api/index.js",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": "dist/**"
+        "excludeFiles": "dist/**"
       }
     },
     {
@@ -15,16 +15,12 @@
       "use": "@vercel/static"
     }
   ],
-  "functions": {
-    "api/index.js": {
-      "runtime": "nodejs24.x",
-      "maxDuration": 20
-    }
-  },
   "routes": [
     { "handle": "filesystem" },
     { "src": "/api/(.*)", "dest": "/api/index.js" },
     { "src": "/uploads/(.*)", "dest": "/api/index.js" },
-    { "src": "/(.*)", "dest": "/api/index.js" }
+    { "src": "/robots.txt", "dest": "/api/index.js" },
+    { "src": "/sitemap.xml", "dest": "/api/index.js" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

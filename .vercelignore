@@ -1,0 +1,15 @@
+# Secrets & local-only files — never upload these to Vercel
+.env
+.env.local
+.env.*.local
+
+# Runtime data (SQLite DB + uploads) — lives in /tmp on Vercel
+data/
+
+# Scratch/analysis files not part of the project
+package-minimal.json
+package-nextjs.json
+login-output.txt
+web/favicon.svg
+web/og.svg
+*.log

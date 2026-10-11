@@ -146,35 +146,41 @@ app.get('/sitemap.xml', (req, res) => {
 });
 
 // ---- Static frontend (production build) ----
-const distDir = path.join(__dirname, '..', 'dist');
-if (fs.existsSync(distDir)) {
-  app.use(
-    '/assets',
-    express.static(path.join(distDir, 'assets'), { index: false, maxAge: '1y', immutable: true })
-  );
-  app.use(
-    express.static(distDir, {
-      index: 'index.html',
-      setHeaders: (res, filePath) => {
-        if (filePath.endsWith('.html')) {
-          res.setHeader('Cache-Control', 'no-cache');
-        } else if (!filePath.includes('/assets/')) {
-          res.setHeader('Cache-Control', 'public, max-age=3600');
-        }
-      },
-    })
-  );
-  app.get(/^(?!\/api\/|\/uploads\/).*/, (req, res) => {
-    res.set(SPA_HEADERS);
-    res.sendFile(path.join(distDir, 'index.html'));
-  });
-} else {
-  app.get(/^(?!\/api\/|\/uploads\/).*/, (req, res) => {
-    res.set(SPA_HEADERS);
-    res.status(200).send(
-      '<h1>The Tech Guider Hub</h1><p>Frontend is not built yet. Run <code>npm run build</code> first.</p>'
+// On Vercel the CDN + vercel.json routes serve the SPA and static files, so the
+// serverless function stays API-only (important: including dist in the function
+// makes Vercel compile the frontend chunks from ESM to CommonJS and breaks them).
+// Locally, Express serves the production build as before.
+if (!process.env.VERCEL) {
+  const distDir = path.join(__dirname, '..', 'dist');
+  if (fs.existsSync(distDir)) {
+    app.use(
+      '/assets',
+      express.static(path.join(distDir, 'assets'), { index: false, maxAge: '1y', immutable: true })
     );
-  });
+    app.use(
+      express.static(distDir, {
+        index: 'index.html',
+        setHeaders: (res, filePath) => {
+          if (filePath.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'no-cache');
+          } else if (!filePath.includes('/assets/')) {
+            res.setHeader('Cache-Control', 'public, max-age=3600');
+          }
+        },
+      })
+    );
+    app.get(/^(?!\/api\/|\/uploads\/).*/, (req, res) => {
+      res.set(SPA_HEADERS);
+      res.sendFile(path.join(distDir, 'index.html'));
+    });
+  } else {
+    app.get(/^(?!\/api\/|\/uploads\/).*/, (req, res) => {
+      res.set(SPA_HEADERS);
+      res.status(200).send(
+        '<h1>The Tech Guider Hub</h1><p>Frontend is not built yet. Run <code>npm run build</code> first.</p>'
+      );
+    });
+  }
 }
 
 // ---- Error handler ----
