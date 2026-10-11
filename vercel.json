@@ -7,8 +7,7 @@
       "src": "api/index.js",
       "use": "@vercel/node",
       "config": {
-        "runtime": "nodejs24.x",
-        "maxDuration": 20
+        "includeFiles": "dist/**"
       }
     },
     {
@@ -16,6 +15,12 @@
       "use": "@vercel/static"
     }
   ],
+  "functions": {
+    "api/index.js": {
+      "runtime": "nodejs24.x",
+      "maxDuration": 20
+    }
+  },
   "routes": [
     { "handle": "filesystem" },
     { "src": "/api/(.*)", "dest": "/api/index.js" },
