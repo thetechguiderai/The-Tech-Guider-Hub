@@ -57,51 +57,88 @@ function Logo({ small }) {
   );
 }
 
-function NavRail() {
+function NavSidebar({ open, onToggle }) {
+  const [openGroup, setOpenGroup] = useState(null);
+  const location = useLocation();
+
+  useEffect(() => {
+    setOpenGroup(null);
+  }, [location.pathname]);
+
   return (
-    <nav className="nav-rail" aria-label="Primary">
-      {NAV.map((n) => {
-        const Ico = Icon[n.icon] || Icon.grid;
-        if (n.children) {
-          return (
-            <div className="rail-item" key={n.label}>
-              <button type="button" className="rail-link" aria-haspopup="true" aria-label={n.label}>
-                <Ico size={18} />
-                <span>{n.label}</span>
-              </button>
-              <div className="rail-flyout" role="menu">
-                <div className="rail-flyout-label">{n.label}</div>
-                {n.children.map((c) => (
-                  <NavLink
-                    key={`${c.to}-${c.label}`}
-                    to={c.to}
-                    className={({ isActive }) => `rail-flyout-link${isActive ? ' active' : ''}`}
-                  >
-                    {c.label}
-                  </NavLink>
-                ))}
+    <aside className={`nav-side${open ? ' open' : ''}`} aria-label="Primary navigation">
+      <div className="side-head">
+        <button
+          type="button"
+          className="side-toggle"
+          aria-label={open ? 'Collapse navigation' : 'Expand navigation'}
+          aria-expanded={open}
+          aria-controls="side-nav"
+          onClick={onToggle}
+        >
+          <Icon.menu size={20} />
+        </button>
+        <span className="side-head-label">Menu</span>
+      </div>
+
+      <nav className="side-nav" id="side-nav">
+        {NAV.map((n) => {
+          const Ico = Icon[n.icon] || Icon.grid;
+          if (n.children) {
+            const isOpen = openGroup === n.label;
+            return (
+              <div className="side-group" key={n.label}>
+                <button
+                  type="button"
+                  className={`side-link side-group-toggle${isOpen ? ' active' : ''}`}
+                  aria-expanded={isOpen}
+                  onClick={() => setOpenGroup(isOpen ? null : n.label)}
+                >
+                  <Ico size={18} />
+                  <span>{n.label}</span>
+                  <Icon.chevronDown
+                    size={15}
+                    className="side-caret"
+                    style={{ transform: isOpen ? 'rotate(180deg)' : 'none' }}
+                  />
+                </button>
+                {isOpen && (
+                  <div className="side-sub">
+                    {n.children.map((c) => (
+                      <NavLink
+                        key={`${c.to}-${c.label}`}
+                        to={c.to}
+                        className={({ isActive }) => `side-sub-link${isActive ? ' active' : ''}`}
+                      >
+                        {c.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
+            );
+          }
+          return (
+            <NavLink
+              key={n.to}
+              to={n.to}
+              end={n.to === '/'}
+              className={({ isActive }) => `side-link${isActive ? ' active' : ''}`}
+            >
+              <Ico size={18} />
+              <span>{n.label}</span>
+            </NavLink>
           );
-        }
-        return (
-          <NavLink
-            key={n.to}
-            to={n.to}
-            end={n.to === '/'}
-            className={({ isActive }) => `rail-link${isActive ? ' active' : ''}`}
-          >
-            <Ico size={18} />
-            <span>{n.label}</span>
-          </NavLink>
-        );
-      })}
-      <div className="rail-divider" />
-      <a className="rail-link rail-subscribe" href={SUBSCRIBE_URL} target="_blank" rel="noopener noreferrer">
-        <Icon.youtube size={18} />
-        <span>Subscribe</span>
-      </a>
-    </nav>
+        })}
+      </nav>
+
+      <div className="side-foot">
+        <a className="side-subscribe" href={SUBSCRIBE_URL} target="_blank" rel="noopener noreferrer">
+          <Icon.youtube size={18} />
+          <span>Subscribe</span>
+        </a>
+      </div>
+    </aside>
   );
 }
 
@@ -515,8 +552,48 @@ function Footer() {
 
 export default function Layout({ children }) {
   const [searchOpen, setSearchOpen] = useState(false);
+  const { site } = useSite();
+  const [navOpen, setNavOpen] = useState(() => {
+    try {
+      return localStorage.getItem('tgh:nav') !== 'collapsed';
+    } catch {
+      return true;
+    }
+  });
   const openSearch = useMemo(() => () => setSearchOpen(true), []);
   const location = useLocation();
+  const annCount = site?.announcements?.length || 0;
+
+  // Keep the desktop sidebar flush with the bottom of the sticky header,
+  // even while a (scrolling) announcement bar is present above it.
+  useEffect(() => {
+    const root = document.documentElement;
+    let last = '';
+    const sync = () => {
+      const header = document.querySelector('.site-header');
+      if (!header) return;
+      const bottom = Math.max(Math.round(header.getBoundingClientRect().bottom), 0);
+      const val = `${bottom}px`;
+      if (val === last) return;
+      last = val;
+      root.style.setProperty('--nav-top', val);
+    };
+    sync();
+    window.addEventListener('scroll', sync, { passive: true });
+    window.addEventListener('resize', sync);
+    return () => {
+      window.removeEventListener('scroll', sync);
+      window.removeEventListener('resize', sync);
+    };
+  }, [annCount]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tgh:nav', navOpen ? 'open' : 'collapsed');
+    } catch {
+      /* ignore */
+    }
+  }, [navOpen]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -524,16 +601,20 @@ export default function Layout({ children }) {
   }, [location.pathname]);
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${navOpen ? '' : ' nav-collapsed'}`}>
       <AnnouncementBar />
       <Header onOpenSearch={openSearch} />
-      <NavRail />
-      <main className="site-main" id="main-content">
-        <div className="page-transition" key={location.pathname}>
-          {children}
+      <div className="shell-body">
+        <NavSidebar open={navOpen} onToggle={() => setNavOpen((v) => !v)} />
+        <div className="shell-content">
+          <main className="site-main" id="main-content">
+            <div className="page-transition" key={location.pathname}>
+              {children}
+            </div>
+          </main>
+          <Footer />
         </div>
-      </main>
-      <Footer />
+      </div>
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
