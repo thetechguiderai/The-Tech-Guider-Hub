@@ -10,7 +10,8 @@ import Videos from './pages/Videos';
 import VideoDetail from './pages/VideoDetail';
 import Tools from './pages/Tools';
 import Minecraft from './pages/Minecraft';
-import Sensitivity from './pages/Sensitivity';
+import FreeFire from './pages/FreeFire';
+import VideoEditingPackages from './pages/VideoEditingPackages';
 import AIPage from './pages/AIPage';
 import About from './pages/About';
 import WebsitePackages from './pages/WebsitePackages';
@@ -58,13 +59,14 @@ export default function App() {
         <Route path="/videos" element={<Layout><Videos /></Layout>} />
         <Route path="/videos/:id" element={<Layout><VideoDetail /></Layout>} />
         <Route path="/tools" element={<Layout><Tools /></Layout>} />
-        <Route path="/free-fire-sensitivity" element={<Layout><Sensitivity /></Layout>} />
+        <Route path="/free-fire-sensitivity" element={<Layout><FreeFire /></Layout>} />
         <Route path="/minecraft" element={<Layout><Minecraft /></Layout>} />
         <Route path="/ai" element={<Layout><AIPage /></Layout>} />
         <Route path="/about" element={<Layout><About /></Layout>} />
         <Route path="/website-packages" element={<Layout><WebsitePackages /></Layout>} />
         <Route path="/games-packages" element={<Layout><GamesPackages /></Layout>} />
         <Route path="/logo-packages" element={<Layout><LogoPackages /></Layout>} />
+        <Route path="/video-editing-packages" element={<Layout><VideoEditingPackages /></Layout>} />
         <Route path="/team" element={<Layout><Team /></Layout>} />
         <Route path="/owner" element={<Owner />} />
         <Route path="/owner/dashboard/*" element={<Dashboard />} />

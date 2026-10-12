@@ -45,9 +45,10 @@ export default function Home() {
     { to: '/resources', icon: Icon.resource, title: 'Video Resources', desc: 'Everything used in the videos — hosts, tools and links.' },
     { to: '/videos', icon: Icon.video, title: 'Videos', desc: 'Latest uploads & coming-soon videos — straight from YouTube.' },
     { to: '/#youtube-stats', icon: Icon.chart, title: 'YouTube Stats', desc: 'Real channel statistics, straight from YouTube.' },
-    { to: '/free-fire-sensitivity', icon: Icon.tool, title: 'FF Sensitivity', desc: 'Generate a Free Fire sensitivity setup for your device.' },
+    { to: '/free-fire-sensitivity', icon: Icon.tool, title: 'Free Fire', desc: 'Sensitivity generator, ID sale & purchase and rank push services.' },
     { to: '/minecraft', icon: Icon.minecraft, title: 'Minecraft', desc: 'Java & Bedrock resources, hosting, tools and guides.' },
     { to: '/ai', icon: Icon.ai, title: 'The Tech Guider AI', desc: 'Your AI assistant by The Tech Guider.' },
+    { to: '/video-editing-packages', icon: Icon.video, title: 'Video Editing', desc: 'Shorts, YouTube edits & monthly editing packages for creators.' },
   ];
 
   return (

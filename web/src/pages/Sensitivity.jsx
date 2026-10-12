@@ -38,10 +38,10 @@ const SENS_FIELDS = [
   { key: 'freeLook', label: 'Free Look' },
 ];
 
-export default function Sensitivity() {
+export default function Sensitivity({ embedded = false }) {
   useMeta(
-    'Free Fire Sensitivity Generator — The Tech Guider Hub',
-    'Generate Free Fire sensitivity settings tuned for your device, RAM and play style. Free tool from The Tech Guider.'
+    embedded ? null : 'Free Fire Sensitivity Generator — The Tech Guider Hub',
+    embedded ? null : 'Generate Free Fire sensitivity settings tuned for your device, RAM and play style. Free tool from The Tech Guider.'
   );
 
   const [deviceType, setDeviceType] = useState('android');
@@ -151,14 +151,8 @@ export default function Sensitivity() {
 
   const v = tuned || (result && result.values);
 
-  return (
-    <div className="container" style={{ paddingTop: 48, paddingBottom: 60, maxWidth: 900 }}>
-      <SectionHead
-        eyebrow="Free Fire"
-        title="FF Sensitivity Generator"
-        sub="Pick your device and play style, then generate a sensitivity setup to try in the training ground."
-      />
-
+  const body = (
+    <>
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="field">
           <label className="field-label">Device type</label>
@@ -412,6 +406,19 @@ export default function Sensitivity() {
           </div>
         </div>
       )}
+    </>
+  );
+
+  if (embedded) return body;
+
+  return (
+    <div className="container" style={{ paddingTop: 48, paddingBottom: 60, maxWidth: 900 }}>
+      <SectionHead
+        eyebrow="Free Fire"
+        title="FF Sensitivity Generator"
+        sub="Pick your device and play style, then generate a sensitivity setup to try in the training ground."
+      />
+      {body}
     </div>
   );
 }

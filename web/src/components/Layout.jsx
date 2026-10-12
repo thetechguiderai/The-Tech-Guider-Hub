@@ -9,12 +9,13 @@ export const NAV = [
   { to: '/resources', label: 'Resources' },
   { to: '/videos', label: 'Videos' },
   { to: '/tools', label: 'Tools' },
-  { to: '/free-fire-sensitivity', label: 'FF Sensitivity' },
+  { to: '/free-fire-sensitivity', label: 'Free Fire' },
   { to: '/minecraft', label: 'Minecraft' },
   { to: '/ai', label: 'Tech Guider AI' },
   { to: '/website-packages', label: 'Website' },
   { to: '/games-packages', label: 'Games' },
   { to: '/logo-packages', label: 'Logo' },
+  { to: '/video-editing-packages', label: 'Video Editing' },
   { to: '/team', label: 'Team' },
   { to: '/about', label: 'About' },
 ];
@@ -344,10 +345,11 @@ function Footer() {
               ['/videos', 'Videos'],
               ['/tools', 'Tools'],
               ['/minecraft', 'Minecraft'],
-              ['/free-fire-sensitivity', 'FF Sensitivity'],
+              ['/free-fire-sensitivity', 'Free Fire'],
               ['/website-packages', 'Website'],
               ['/games-packages', 'Games'],
               ['/logo-packages', 'Logo'],
+              ['/video-editing-packages', 'Video Editing'],
               ['/team', 'Team'],
             ].map(([to, label]) => (
               <Link key={to} to={to}>{label}</Link>

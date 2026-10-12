@@ -6,11 +6,11 @@ const { db } = require('./db');
 const PLAY_STYLES = ['one_tap', 'rush', 'balanced', 'sniper', 'custom'];
 
 const PLAY_STYLE_MODS = {
-  one_tap: { general: 1.05, redDot: 1.06, scope2: 0.98, scope4: 0.95, sniper: 0.94, freeLook: 1.0, fireButton: 0.82, dpi: 1.0 },
-  rush:    { general: 1.02, redDot: 1.02, scope2: 1.0,  scope4: 0.98, sniper: 0.97, freeLook: 1.0, fireButton: 0.9,  dpi: 1.0 },
-  balanced:{ general: 1.0,  redDot: 1.0,  scope2: 1.0,  scope4: 1.0,  sniper: 1.0,  freeLook: 1.0, fireButton: 0.86, dpi: 1.0 },
-  sniper:  { general: 1.02, redDot: 0.98, scope2: 0.94, scope4: 0.9,  sniper: 0.86, freeLook: 0.92, fireButton: 0.86, dpi: 0.9 },
-  custom:  { general: 1.0,  redDot: 1.0,  scope2: 1.0,  scope4: 1.0,  sniper: 1.0,  freeLook: 1.0, fireButton: 0.86, dpi: 1.0 },
+  one_tap: { general: 1.02, redDot: 1.04, scope2: 1.0,  scope4: 0.98, sniper: 0.96, freeLook: 1.0,  fireButton: 0.84, dpi: 1.0 },
+  rush:    { general: 1.01, redDot: 1.02, scope2: 1.02, scope4: 1.0,  sniper: 0.98, freeLook: 1.0,  fireButton: 0.92, dpi: 1.0 },
+  balanced:{ general: 1.0,  redDot: 1.0,  scope2: 1.0,  scope4: 1.0,  sniper: 1.0,  freeLook: 1.0,  fireButton: 0.88, dpi: 1.0 },
+  sniper:  { general: 1.0,  redDot: 0.98, scope2: 0.96, scope4: 0.92, sniper: 0.88, freeLook: 0.9,  fireButton: 0.88, dpi: 0.96 },
+  custom:  { general: 1.0,  redDot: 1.0,  scope2: 1.0,  scope4: 1.0,  sniper: 1.0,  freeLook: 1.0,  fireButton: 0.88, dpi: 1.0 },
 };
 
 const BRAND_QUALITY = {
@@ -55,23 +55,22 @@ function inferPerformanceClass(input) {
 }
 
 function baseMultiplier(input, perfClass) {
-  const cls = { low: 0.86, mid: 1.0, high: 1.1 }[perfClass] || 1.0;
+  // Sensitivity is a personal preference — device power must NOT push every
+  // value to 100. Only a small nudge is applied: low-end devices get a tiny
+  // boost (more responsive at lower fps), high-end gets a tiny reduction
+  // (more control), and smooth high-refresh displays allow a hair more.
+  const cls = { low: 1.02, mid: 1.0, high: 0.99 }[perfClass] || 1.0;
   const ram = parseInt(input.ram, 10) || 4;
   let ramFactor = 1.0;
-  if (ram < 4) ramFactor = 0.92;
-  else if (ram < 6) ramFactor = 0.98;
-  else if (ram === 8) ramFactor = 1.02;
-  else if (ram > 8) ramFactor = 1.05;
+  if (ram < 4) ramFactor = 1.01;
+  else if (ram === 8) ramFactor = 0.99;
+  else if (ram > 8) ramFactor = 0.985;
   let refreshFactor = 1.0;
   const hz = parseInt(String(input.refreshRate || '0').replace(/[^0-9]/g, ''), 10) || 0;
-  if (hz >= 144) refreshFactor = 1.08;
-  else if (hz >= 120) refreshFactor = 1.07;
-  else if (hz >= 90) refreshFactor = 1.04;
-  let resFactor = 1.0;
-  const res = String(input.resolution || '');
-  if (/720/.test(res)) resFactor = 0.96;
-  else if (/1440/.test(res)) resFactor = 1.03;
-  return cls * ramFactor * refreshFactor * resFactor;
+  if (hz >= 144) refreshFactor = 1.015;
+  else if (hz >= 120) refreshFactor = 1.01;
+  else if (hz >= 90) refreshFactor = 1.005;
+  return cls * ramFactor * refreshFactor;
 }
 
 function recommendedDpi(input, perfClass, playStyle, fireButton) {
@@ -87,7 +86,7 @@ function recommendedDpi(input, perfClass, playStyle, fireButton) {
   }
   const base = inferAndroidDpi(input, perfClass);
   const playBias = PLAY_STYLE_MODS[playStyle] ? PLAY_STYLE_MODS[playStyle].dpi : 1;
-  const value = clamp(Math.round(base * (1 + variation * 0.5) * playBias), 320, 500);
+  const value = clamp(Math.round(base * (1 + variation * 0.5) * playBias), 360, 500);
   return { value, range: `${value - 20} – ${value + 20}`, compact: `${value - 20}–${value + 20}` };
 }
 
@@ -110,15 +109,16 @@ function buildAlgorithmValues(input) {
   const mod = PLAY_STYLE_MODS[input.playStyle] || PLAY_STYLE_MODS.balanced;
   const v = (key, baseVal, lo, hi) =>
     clamp(Math.round(baseVal * base * (1 + variation) * mod[key]), lo, hi);
-  const fireButton = clamp(Math.round(86 * mod.fireButton * (1 + variation * 0.5)), 50, 100);
+  const fireButton = clamp(Math.round(85 * mod.fireButton * (1 + variation * 0.5)), 55, 98);
   const dpi = recommendedDpi(input, perfClass, input.playStyle, fireButton);
   return {
-    general: v('general', 100, 55, 100),
-    redDot: v('redDot', 92, 45, 100),
-    scope2: v('scope2', 84, 35, 100),
-    scope4: v('scope4', 74, 25, 100),
-    sniperScope: v('sniper', 64, 20, 95),
-    freeLook: v('freeLook', 70, 40, 100),
+    // Realistic pro-style ranges — a good device should NOT max every value out.
+    general: v('general', 90, 75, 100),
+    redDot: v('redDot', 88, 70, 100),
+    scope2: v('scope2', 79, 55, 100),
+    scope4: v('scope4', 71, 45, 95),
+    sniperScope: v('sniper', 60, 35, 90),
+    freeLook: v('freeLook', 84, 65, 100),
     fireButtonSize: fireButton,
     dpi: dpi.value,
     dpiRange: dpi.range,

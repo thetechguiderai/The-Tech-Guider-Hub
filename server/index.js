@@ -126,6 +126,7 @@ app.get('/sitemap.xml', (req, res) => {
     { loc: '/free-fire-sensitivity', priority: '0.8', freq: 'weekly' },
     { loc: '/minecraft', priority: '0.7', freq: 'weekly' },
     { loc: '/ai', priority: '0.6', freq: 'weekly' },
+    { loc: '/video-editing-packages', priority: '0.7', freq: 'weekly' },
     { loc: '/about', priority: '0.5', freq: 'monthly' },
   ];
   for (const v of videoRows) {

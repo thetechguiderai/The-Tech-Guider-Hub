@@ -249,10 +249,13 @@ router.get('/search', (req, res) => {
 
   const toolKeywords = [
     ['free fire sensitivity generator', ['freefire', 'free fire', 'sensitivity', 'generator', 'ff']],
+    ['free fire id sale & purchase', ['ff id', 'free fire id', 'sell', 'sale', 'buy', 'purchase', 'account']],
+    ['free fire rank push', ['rank push', 'boost', 'rank']],
     ['minecraft hub', ['minecraft', 'mc', 'java', 'bedrock']],
     ['tech guider ai', ['ai', 'chat', 'assistant', 'tech guider ai']],
     ['youtube stats', ['stats', 'subscribers', 'views', 'youtube', 'channel']],
     ['video resources', ['resources', 'video']],
+    ['video editing packages', ['video editing', 'edit', 'shorts', 'reels', 'editing']],
   ];
   for (const [name, keys] of toolKeywords) {
     if (keys.some((k) => q.includes(k))) {
@@ -266,10 +269,13 @@ router.get('/search', (req, res) => {
 function toolRoute(name) {
   const map = {
     'free fire sensitivity generator': '/free-fire-sensitivity',
+    'free fire id sale & purchase': '/free-fire-sensitivity?tab=sale',
+    'free fire rank push': '/free-fire-sensitivity?tab=rank',
     'minecraft hub': '/minecraft',
     'tech guider ai': '/ai',
     'youtube stats': '/#youtube-stats',
     'video resources': '/resources',
+    'video editing packages': '/video-editing-packages',
   };
   return map[name] || '/tools';
 }
