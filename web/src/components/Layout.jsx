@@ -24,7 +24,7 @@ function Logo({ small }) {
   return (
     <Link to="/" className="brand" aria-label="The Tech Guider 01 — Home">
       <img
-        src="/logo.svg"
+        src="/logo.png"
         alt="The Tech Guider 01"
         width="36"
         height="36"
