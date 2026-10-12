@@ -198,8 +198,8 @@ function setSetting(key, value) {
 
 const DEFAULT_SETTINGS = {
   youtube: 'https://www.youtube.com/@thetechguider01',
-  discord: '',
-  instagram: '',
+  discord: 'https://discord.gg/dczyhM8ZwV',
+  instagram: 'https://www.instagram.com/legend0.26/',
   tiktok: '',
   x: '',
   website: '',

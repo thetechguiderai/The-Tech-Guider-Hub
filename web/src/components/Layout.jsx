@@ -3,21 +3,42 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 import { publicApi } from '../api';
 import { useSite } from '../context';
 import { Icon, Spinner } from './ui';
+import { SITE_LINKS, socialLink, SUBSCRIBE_URL } from '../links';
 
+// Primary navigation. Items with `children` render a flyout (grouped).
 export const NAV = [
-  { to: '/', label: 'Home' },
-  { to: '/resources', label: 'Resources' },
-  { to: '/videos', label: 'Videos' },
-  { to: '/tools', label: 'Tools' },
-  { to: '/free-fire-sensitivity', label: 'Free Fire' },
-  { to: '/minecraft', label: 'Minecraft' },
-  { to: '/ai', label: 'Tech Guider AI' },
-  { to: '/website-packages', label: 'Website' },
-  { to: '/games-packages', label: 'Games' },
-  { to: '/logo-packages', label: 'Logo' },
-  { to: '/video-editing-packages', label: 'Video Editing' },
-  { to: '/team', label: 'Team' },
-  { to: '/about', label: 'About' },
+  { to: '/', label: 'Home', icon: 'home' },
+  { to: '/videos', label: 'Videos', icon: 'video' },
+  {
+    label: 'Gaming',
+    icon: 'minecraft',
+    children: [
+      { to: '/minecraft', label: 'Minecraft Hub' },
+      { to: '/free-fire-sensitivity', label: 'Free Fire' },
+      { to: '/videos', label: 'Gaming Tutorials' },
+    ],
+  },
+  {
+    label: 'Tools',
+    icon: 'tool',
+    children: [
+      { to: '/tools', label: 'All Tools' },
+      { to: '/free-fire-sensitivity', label: 'Sensitivity Generator' },
+      { to: '/ai', label: 'Tech Guider AI' },
+    ],
+  },
+  {
+    label: 'Services',
+    icon: 'star',
+    children: [
+      { to: '/video-editing-packages', label: 'Video Editing' },
+      { to: '/logo-packages', label: 'Logo Design' },
+      { to: '/website-packages', label: 'Website Development' },
+      { to: '/games-packages', label: 'Games' },
+    ],
+  },
+  { to: '/resources', label: 'Resources', icon: 'resource' },
+  { to: '/about', label: 'About', icon: 'profile' },
 ];
 
 function Logo({ small }) {
@@ -36,8 +57,58 @@ function Logo({ small }) {
   );
 }
 
+function NavRail() {
+  return (
+    <nav className="nav-rail" aria-label="Primary">
+      {NAV.map((n) => {
+        const Ico = Icon[n.icon] || Icon.grid;
+        if (n.children) {
+          return (
+            <div className="rail-item" key={n.label}>
+              <button type="button" className="rail-link" aria-haspopup="true" aria-label={n.label}>
+                <Ico size={18} />
+                <span>{n.label}</span>
+              </button>
+              <div className="rail-flyout" role="menu">
+                <div className="rail-flyout-label">{n.label}</div>
+                {n.children.map((c) => (
+                  <NavLink
+                    key={`${c.to}-${c.label}`}
+                    to={c.to}
+                    className={({ isActive }) => `rail-flyout-link${isActive ? ' active' : ''}`}
+                  >
+                    {c.label}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
+          );
+        }
+        return (
+          <NavLink
+            key={n.to}
+            to={n.to}
+            end={n.to === '/'}
+            className={({ isActive }) => `rail-link${isActive ? ' active' : ''}`}
+          >
+            <Ico size={18} />
+            <span>{n.label}</span>
+          </NavLink>
+        );
+      })}
+      <div className="rail-divider" />
+      <a className="rail-link rail-subscribe" href={SUBSCRIBE_URL} target="_blank" rel="noopener noreferrer">
+        <Icon.youtube size={18} />
+        <span>Subscribe</span>
+      </a>
+    </nav>
+  );
+}
+
 function Header({ onOpenSearch }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [openGroup, setOpenGroup] = useState(null);
+  const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
@@ -54,6 +125,13 @@ function Header({ onOpenSearch }) {
   }, [mobileOpen]);
 
   useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
     const onKey = (e) => {
       if (e.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
         e.preventDefault();
@@ -67,23 +145,25 @@ function Header({ onOpenSearch }) {
 
   return (
     <>
-      <header className="site-header">
+      <header className={`site-header${scrolled ? ' scrolled' : ''}`}>
         <div className="container">
           <div className="site-header-inner">
             <Logo />
-            <nav className="nav-links" aria-label="Primary">
-              {NAV.map((n) => (
-                <NavLink key={n.to} to={n.to} className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-                  {n.label}
-                </NavLink>
-              ))}
-            </nav>
             <div className="header-actions">
               <button className="search-trigger" onClick={onOpenSearch} aria-label="Search the hub">
                 <Icon.search size={15} />
                 <span className="hide-mobile">Search</span>
                 <span className="kbd hide-mobile">/</span>
               </button>
+              <a
+                className="btn btn-blue btn-sm"
+                href={SUBSCRIBE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Icon.youtube size={15} />
+                <span className="hide-mobile">Subscribe</span>
+              </a>
               <Link to="/owner" className="btn btn-ghost btn-sm hide-mobile">
                 Owner
               </Link>
@@ -109,18 +189,57 @@ function Header({ onOpenSearch }) {
               <Icon.close size={20} />
             </button>
           </div>
-          {NAV.map((n) => (
-            <NavLink
-              key={n.to}
-              to={n.to}
-              className={({ isActive }) => `mobile-nav-link${isActive ? ' active' : ''}`}
-            >
-              {n.label}
-            </NavLink>
-          ))}
+          {NAV.map((n) => {
+            const Ico = Icon[n.icon] || Icon.grid;
+            if (n.children) {
+              const isOpen = openGroup === n.label;
+              return (
+                <div key={n.label} className="mobile-nav-group">
+                  <button
+                    className={`mobile-nav-link mobile-nav-toggle${isOpen ? ' active' : ''}`}
+                    onClick={() => setOpenGroup(isOpen ? null : n.label)}
+                    aria-expanded={isOpen}
+                  >
+                    <Ico size={17} />
+                    <span>{n.label}</span>
+                    <Icon.chevronDown size={16} style={{ marginLeft: 'auto', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
+                  </button>
+                  {isOpen && (
+                    <div className="mobile-nav-sub">
+                      {n.children.map((c) => (
+                        <NavLink
+                          key={`${c.to}-${c.label}`}
+                          to={c.to}
+                          className={({ isActive }) => `mobile-nav-link${isActive ? ' active' : ''}`}
+                        >
+                          {c.label}
+                        </NavLink>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+            return (
+              <NavLink
+                key={n.to}
+                to={n.to}
+                end={n.to === '/'}
+                className={({ isActive }) => `mobile-nav-link${isActive ? ' active' : ''}`}
+              >
+                <Ico size={17} />
+                <span>{n.label}</span>
+              </NavLink>
+            );
+          })}
           <div style={{ height: 8 }} />
+          <a className="mobile-nav-link" href={SUBSCRIBE_URL} target="_blank" rel="noopener noreferrer">
+            <Icon.youtube size={17} />
+            <span>Subscribe on YouTube</span>
+          </a>
           <NavLink to="/owner" className="mobile-nav-link">
-            Owner Access
+            <Icon.lock size={17} />
+            <span>Owner Access</span>
           </NavLink>
           <div className="mobile-nav-foot">
             Built for The Tech Guider 01 community.
@@ -319,14 +438,13 @@ function SearchGroup({ label, children }) {
 
 function Footer() {
   const { site } = useSite();
-  const social = site?.social || {};
   const socials = [
-    ['YouTube', social.youtube, Icon.youtube],
-    ['Discord', social.discord, Icon.discord],
-    ['Instagram', social.instagram, Icon.instagram],
-    ['TikTok', social.tiktok, Icon.tiktok],
-    ['X', social.x, Icon.x],
-    ['Website', social.website, Icon.globe],
+    ['YouTube', socialLink(site, 'youtube'), Icon.youtube],
+    ['Discord', socialLink(site, 'discord'), Icon.discord],
+    ['Instagram', socialLink(site, 'instagram'), Icon.instagram],
+    ['TikTok', socialLink(site, 'tiktok'), Icon.tiktok],
+    ['X', socialLink(site, 'x'), Icon.x],
+    ['Website', socialLink(site, 'website'), Icon.globe],
   ].filter(([, url]) => url);
 
   return (
@@ -406,9 +524,10 @@ export default function Layout({ children }) {
   }, [location.pathname]);
 
   return (
-    <>
+    <div className="app-shell">
       <AnnouncementBar />
       <Header onOpenSearch={openSearch} />
+      <NavRail />
       <main className="site-main" id="main-content">
         <div className="page-transition" key={location.pathname}>
           {children}
@@ -416,6 +535,6 @@ export default function Layout({ children }) {
       </main>
       <Footer />
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
-    </>
+    </div>
   );
 }

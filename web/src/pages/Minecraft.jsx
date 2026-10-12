@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { publicApi } from '../api';
 import { useMeta } from '../App';
 import { SectionHead, Badge, Spinner, ErrorState, EmptyState, Icon } from '../components/ui';
@@ -22,9 +23,15 @@ const AVAIL_TONE = {
 
 export default function Minecraft() {
   useMeta('Minecraft Hub — The Tech Guider Hub', 'Minecraft Java & Bedrock resources, hosting, tools and guides.');
-  const [edition, setEdition] = useState('java');
+  const [searchParams] = useSearchParams();
+  const [edition, setEdition] = useState(searchParams.get('edition') === 'bedrock' ? 'bedrock' : 'java');
   const [state, setState] = useState({ loading: true, listings: [], error: null });
   const [type, setType] = useState('all');
+
+  useEffect(() => {
+    const e = searchParams.get('edition');
+    if (e === 'bedrock' || e === 'java') setEdition(e);
+  }, [searchParams]);
 
   useEffect(() => {
     (async () => {

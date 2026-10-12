@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useSite } from '../context';
 import { useMeta } from '../App';
 import { Badge, Icon, SectionHead } from '../components/ui';
+import { SITE_LINKS } from '../links';
 import Sensitivity from './Sensitivity';
 
 const FF_TABS = [
@@ -32,7 +33,7 @@ const TAB_META = {
   },
 };
 
-export const DISCORD_DEFAULT = 'https://discord.gg/eyFK3sQvZ';
+export const DISCORD_DEFAULT = SITE_LINKS.discord;
 
 function DiscordCta({ url, label = 'Contact us on Discord', sub }) {
   return (

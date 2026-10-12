@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useSite } from '../context';
 import { useMeta } from '../App';
 import { SectionHead, Icon } from '../components/ui';
+import { socialLink } from '../links';
 
 export default function About() {
   useMeta('About — The Tech Guider 01', 'About The Tech Guider 01, the official hub, and the community rules around rewards.');
@@ -69,16 +70,15 @@ export default function About() {
       </div>
 
       <div className="flex gap-2 align-center flex-wrap" style={{ marginTop: 28 }}>
-        {site?.social?.youtube && (
-          <a className="btn btn-ghost" href={site.social.youtube} target="_blank" rel="noopener noreferrer">
-            <Icon.youtube size={16} /> YouTube Channel
-          </a>
-        )}
-        {site?.social?.discord && (
-          <a className="btn btn-ghost" href={site.social.discord} target="_blank" rel="noopener noreferrer">
-            <Icon.discord size={16} /> Discord Server
-          </a>
-        )}
+        <a className="btn btn-ghost" href={socialLink(site, 'youtube')} target="_blank" rel="noopener noreferrer">
+          <Icon.youtube size={16} /> YouTube Channel
+        </a>
+        <a className="btn btn-ghost" href={socialLink(site, 'discord')} target="_blank" rel="noopener noreferrer">
+          <Icon.discord size={16} /> Discord Server
+        </a>
+        <a className="btn btn-ghost" href={socialLink(site, 'instagram')} target="_blank" rel="noopener noreferrer">
+          <Icon.instagram size={16} /> Instagram
+        </a>
         <Link to="/resources" className="btn btn-ghost">
           Explore Resources
         </Link>
