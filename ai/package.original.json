@@ -1,0 +1,87 @@
+{
+  "name": "the-tech-guider-ai",
+  "version": "1.0.0",
+  "author": "The Tech Guider AI",
+  "description": "The Tech Guider AI - full-stack AI platform",
+  "type": "module",
+  "main": "desktop/main.cjs",
+  "scripts": {
+    "dev": "node Server/server.js",
+    "start": "node Server/server.js",
+    "vercel-build": "node scripts/vercel-build.mjs",
+    "desktop": "electron .",
+    "desktop:build": "node desktop/prepare-production.cjs && electron-builder --win nsis --x64",
+    "desktop:nsis": "npm run desktop:build",
+    "package:nsis": "npm run desktop:nsis",
+    "android:sync": "npx cap sync android",
+    "android:build": "cd android && gradlew.bat assembleRelease",
+    "ios:sync": "npx cap sync ios"
+  },
+  "build": {
+    "appId": "com.thetechguider.ai",
+    "productName": "The Tech Guider AI",
+    "compression": "store",
+    "asar": false,
+    "directories": {
+      "buildResources": "desktop/build",
+      "output": "release"
+    },
+    "files": [
+      "desktop/**/*",
+      "Server/**/*",
+      "Public/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "Public/logo.png"
+    },
+    "nsis": {
+      "artifactName": "The-Tech-Guider-AI-Setup-${version}.${ext}",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
+    "@capacitor/core": "^7.6.9",
+    "@google/generative-ai": "^0.24.1",
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^8.7.1",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.12.1",
+    "multer": "^2.4.0",
+    "nanoid": "^5.0.7",
+    "nodemailer": "^10.1.1",
+    "openai": "^7.33.0",
+    "otplib": "^13.5.0",
+    "qrcode": "^1.5.4",
+    "serverless-http": "^3.2.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^7.6.9",
+    "@capacitor/cli": "^7.6.9",
+    "@capacitor/ios": "^7.4.3",
+    "electron": "^37.2.6",
+    "electron-builder": "^26.0.12",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  }
+}

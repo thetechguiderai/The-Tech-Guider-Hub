@@ -42,14 +42,12 @@ export default function Tools() {
     },
   ];
 
-  if (site?.aiUrl) {
-    tools.push({
-      ext: site.aiUrl,
-      icon: Icon.ai,
-      title: 'The Tech Guider AI',
-      desc: 'Open the AI assistant built by The Tech Guider.',
-    });
-  }
+  tools.push({
+    ext: '/ai',
+    icon: Icon.ai,
+    title: 'The Tech Guider AI',
+    desc: 'Open the AI workspace built by The Tech Guider — chat, code and create.',
+  });
 
   return (
     <div className="container" style={{ paddingTop: 48, paddingBottom: 48 }}>
@@ -73,8 +71,16 @@ export default function Tools() {
             </>
           );
           if (t.ext) {
+            const internal = String(t.ext).startsWith('/');
             return (
-              <a key={t.title} href={t.ext} target="_blank" rel="noopener noreferrer" className="card card-hover" style={{ textDecoration: 'none' }}>
+              <a
+                key={t.title}
+                href={t.ext}
+                target={internal ? undefined : '_blank'}
+                rel={internal ? undefined : 'noopener noreferrer'}
+                className="card card-hover"
+                style={{ textDecoration: 'none' }}
+              >
                 {inner}
               </a>
             );

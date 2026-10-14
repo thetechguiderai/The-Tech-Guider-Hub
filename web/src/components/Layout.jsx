@@ -24,7 +24,7 @@ export const NAV = [
     children: [
       { to: '/tools', label: 'All Tools' },
       { to: '/free-fire-sensitivity', label: 'Sensitivity Generator' },
-      { to: '/ai', label: 'Tech Guider AI' },
+      { href: '/ai', label: 'Tech Guider AI' },
     ],
   },
   {
@@ -105,13 +105,19 @@ function NavSidebar({ open, onToggle }) {
                 {isOpen && (
                   <div className="side-sub">
                     {n.children.map((c) => (
-                      <NavLink
-                        key={`${c.to}-${c.label}`}
-                        to={c.to}
-                        className={({ isActive }) => `side-sub-link${isActive ? ' active' : ''}`}
-                      >
-                        {c.label}
-                      </NavLink>
+                      c.href ? (
+                        <a key={`${c.href}-${c.label}`} href={c.href} className="side-sub-link">
+                          {c.label}
+                        </a>
+                      ) : (
+                        <NavLink
+                          key={`${c.to}-${c.label}`}
+                          to={c.to}
+                          className={({ isActive }) => `side-sub-link${isActive ? ' active' : ''}`}
+                        >
+                          {c.label}
+                        </NavLink>
+                      )
                     ))}
                   </div>
                 )}
@@ -244,13 +250,19 @@ function Header({ onOpenSearch }) {
                   {isOpen && (
                     <div className="mobile-nav-sub">
                       {n.children.map((c) => (
-                        <NavLink
-                          key={`${c.to}-${c.label}`}
-                          to={c.to}
-                          className={({ isActive }) => `mobile-nav-link${isActive ? ' active' : ''}`}
-                        >
-                          {c.label}
-                        </NavLink>
+                        c.href ? (
+                          <a key={`${c.href}-${c.label}`} href={c.href} className="mobile-nav-link">
+                            {c.label}
+                          </a>
+                        ) : (
+                          <NavLink
+                            key={`${c.to}-${c.label}`}
+                            to={c.to}
+                            className={({ isActive }) => `mobile-nav-link${isActive ? ' active' : ''}`}
+                          >
+                            {c.label}
+                          </NavLink>
+                        )
                       ))}
                     </div>
                   )}
@@ -512,16 +524,9 @@ function Footer() {
           </div>
           <div className="footer-col">
             <h5>Platform</h5>
-            {[
-              ['/ai', 'The Tech Guider AI'],
-              ['/about', 'About'],
-              ['/owner', 'Owner Access'],
-            ].map(([to, label]) => (
-              <Link key={to} to={to}>{label}</Link>
-            ))}
-            {site?.aiUrl && (
-              <a href={site.aiUrl} target="_blank" rel="noopener noreferrer">Open AI Assistant ↗</a>
-            )}
+            <a href="/ai">The Tech Guider AI</a>
+            <Link to="/about">About</Link>
+            <Link to="/owner">Owner Access</Link>
           </div>
           <div className="footer-col">
             <h5>Follow</h5>

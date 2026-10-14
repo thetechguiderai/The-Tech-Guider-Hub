@@ -91,6 +91,29 @@ app.post('/api/owner/upload', (req, res, next) => {
 app.use('/api/public', publicRoutes);
 app.use('/api/owner', ownerRoutes);
 
+// ---- The Tech Guider AI (merged, served under /ai) ----
+// The AI app is ESM while this server is CommonJS, so it is loaded lazily with
+// a dynamic import and every /ai request is handed to it. The mounted app sees
+// the request with the /ai prefix stripped (e.g. /ai/api/chat -> /api/chat).
+let aiAppPromise = null;
+function getAiApp() {
+  if (!aiAppPromise) {
+    aiAppPromise = import('../ai/Server/server.js')
+      .then((mod) => mod.default || mod.app)
+      .catch((err) => {
+        aiAppPromise = null;
+        console.error('[ai] Failed to load The Tech Guider AI app:', err && err.message);
+        throw err;
+      });
+  }
+  return aiAppPromise;
+}
+app.use('/ai', (req, res, next) => {
+  getAiApp()
+    .then((aiApp) => aiApp(req, res, next))
+    .catch(next);
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, db: dbPath });
 });

@@ -4,11 +4,18 @@
   "framework": null,
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "{ai/Server/**,ai/Public/**}"
+    }
+  },
   "rewrites": [
+    { "source": "/ai/api/(.*)", "destination": "/api/index.js" },
     { "source": "/api/(.*)", "destination": "/api/index.js" },
     { "source": "/uploads/(.*)", "destination": "/api/index.js" },
     { "source": "/robots.txt", "destination": "/api/index.js" },
     { "source": "/sitemap.xml", "destination": "/api/index.js" },
+    { "source": "/ai", "destination": "/ai/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

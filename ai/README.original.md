@@ -1,0 +1,63 @@
+# The Tech Guider AI
+
+The Tech Guider AI is a full-stack AI workspace with chat, model routing, conversations, plans, billing hooks, and an owner dashboard.
+
+## Web development
+
+```powershell
+npm install
+npm run dev
+```
+
+The local server runs on port 3000. Configure server-only secrets in a local `.env` copied from `.env.example`; never commit that file.
+
+Open the application through the Express server at `http://127.0.0.1:3000`, not by opening `Public/*.html` with Live Server. Live Server serves static files only and does not provide the `/api/*` backend routes. The browser API helper also forwards Live Server requests from port 5500 to port 3000 for convenience, but the Express URL is the recommended local workflow.
+
+When a separate static host needs a different backend, set `window.TG_API_BASE_URL` before loading `api.js`; otherwise the helper automatically uses `http://127.0.0.1:3000` for Live Server and same-origin `/api` routes everywhere else.
+
+## Production URL
+
+Set `TG_PRODUCTION_URL` to the HTTPS URL of the deployed web application (for example, the production Netlify URL). Desktop and Android release builds use this URL and must never use localhost. `APP_URL` remains the canonical server URL for OAuth callback construction.
+
+## Windows NSIS installer
+
+```powershell
+$env:TG_PRODUCTION_URL = "https://your-production-domain.example"
+npm run desktop:nsis
+```
+
+This creates a real x64 NSIS `.exe` installer in `release/`. The build-time script injects the non-secret production URL into the packaged Electron app. Development mode (`npm run desktop`) continues to run the local server.
+
+Windows prerequisites: Node.js, npm, and the Electron/electron-builder dependencies installed by `npm install`. Building an NSIS installer must be done on Windows.
+
+## Android APK
+
+The Android wrapper is generated with Capacitor and connects directly to the configured HTTPS production web app/API. It keeps web authentication in the hosted origin, including its secure cookie behavior.
+
+```powershell
+$env:TG_PRODUCTION_URL = "https://your-production-domain.example"
+npm run android:sync
+npm run android:build
+```
+
+The release APK is written to `android/app/build/outputs/apk/release/app-release.apk`.
+
+Android prerequisites: Android Studio, a compatible Android SDK/platform, Java 21 (or the version required by the generated Gradle wrapper), and `ANDROID_HOME`/Android Studio SDK configuration. If Gradle needs a signing configuration for distribution, configure it outside source control before publishing.
+
+## iOS
+
+The Capacitor iOS project is in `ios/App/App.xcworkspace` and loads the same HTTPS production URL configured by `TG_PRODUCTION_URL` or `APP_URL`.
+
+On a macOS machine with Xcode and CocoaPods installed:
+
+```sh
+npm install
+npm run ios:sync
+npx cap open ios
+```
+
+Open the generated workspace, choose an Apple Developer signing team and unique bundle identifier, then use Xcode **Product → Archive → Distribute App** to create a signed IPA or upload to App Store Connect. An Apple Developer account, macOS, Xcode, CocoaPods, and valid signing credentials are required; this Windows environment cannot produce a signed iOS IPA.
+
+## Releases
+
+Generated MSI/APK files, unpacked applications, Gradle output, local databases, and production URL injection files are ignored by Git. Host release artifacts in a real release service (for example GitHub Releases) before converting the site’s “Coming Soon” download controls into download links.
