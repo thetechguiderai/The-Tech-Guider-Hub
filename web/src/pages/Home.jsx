@@ -417,7 +417,7 @@ export default function Home() {
                 Ask questions, get recommendations and find your way around everything on the channel.
               </p>
             </div>
-            <a href="/ai" className="btn btn-blue btn-lg">
+            <a href="/ai/" className="btn btn-blue btn-lg">
               <Icon.ai size={18} /> Open The Tech Guider AI
             </a>
           </div>
