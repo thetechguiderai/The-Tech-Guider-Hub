@@ -98,27 +98,42 @@ async function fetchFromYouTube() {
       const channel = channelJson.items && channelJson.items[0];
       if (!channel) throw new Error('Channel not found');
 
-      let latest = null;
+      // Pull the whole uploads playlist (paginated) so every channel video is
+      // available, not just the most recent one.
+      const uploadsVideos = [];
       const uploads = channel.contentDetails && channel.contentDetails.relatedPlaylists && channel.contentDetails.relatedPlaylists.uploads;
       if (uploads) {
-        const listRes = await fetch(
-          `${base}/playlistItems?part=snippet&playlistId=${encodeURIComponent(uploads)}&maxResults=1&key=${apiKey}`
-        );
-        if (listRes.ok) {
+        let pageToken = '';
+        const maxPages = 4; // safety cap: up to 200 uploads
+        for (let page = 0; page < maxPages; page++) {
+          const pageParam = pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '';
+          const listRes = await fetch(
+            `${base}/playlistItems?part=snippet&playlistId=${encodeURIComponent(uploads)}&maxResults=50${pageParam}&key=${apiKey}`
+          );
+          if (!listRes.ok) break;
           const listJson = await listRes.json();
-          const item = listJson.items && listJson.items[0];
-          if (item) {
-            const sn = item.snippet;
-            latest = {
-              id: sn.resourceId && sn.resourceId.videoId,
-              title: sn.title || '',
-              thumbnail: sn.thumbnails && sn.thumbnails.high ? sn.thumbnails.high.url : (sn.thumbnails && sn.thumbnails.default ? sn.thumbnails.default.url : ''),
+          const items = listJson.items || [];
+          for (const item of items) {
+            const sn = item.snippet || {};
+            const vid = sn.resourceId && sn.resourceId.videoId;
+            if (!vid) continue;
+            const title = sn.title || '';
+            if (title === 'Private video' || title === 'Deleted video') continue;
+            const thumbs = sn.thumbnails || {};
+            const thumb = thumbs.high || thumbs.medium || thumbs.default || {};
+            uploadsVideos.push({
+              id: vid,
+              title,
+              thumbnail: thumb.url || '',
               publishedAt: sn.publishedAt || '',
-              url: `https://www.youtube.com/watch?v=${sn.resourceId.videoId}`,
-            };
+              url: `https://www.youtube.com/watch?v=${vid}`,
+            });
           }
+          pageToken = listJson.nextPageToken || '';
+          if (!pageToken) break;
         }
       }
+      const latest = uploadsVideos[0] || null;
 
       const stats = channel.statistics || {};
       const payload = {
@@ -143,6 +158,7 @@ async function fetchFromYouTube() {
           hiddenSubscriberCount: stats.hiddenSubscriberCount === true,
         },
         latestVideo: latest,
+        videos: uploadsVideos,
       };
       updateCache(payload);
       return payload;

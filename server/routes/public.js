@@ -71,28 +71,28 @@ router.get('/videos', async (req, res) => {
   ).all();
   const videos = rows.map(videoRow);
 
-  // When the channel is live, also surface the latest YouTube upload.
+  // When the channel is live, surface every upload from YouTube.
   const youtubeResult = await fetchFromYouTube();
-  if (youtubeResult.available && youtubeResult.latestVideo) {
-    const v = youtubeResult.latestVideo;
-    const already = videos.some((x) => x.youtubeUrl && x.youtubeUrl === v.url);
-    if (!already) {
-      const resources = db.prepare(
-        `SELECT r.id, r.name, r.url, r.logo, r.description, r.category, r.featured
-         FROM video_resources vr JOIN resources r ON r.id = vr.resource_id
-         WHERE vr.video_id = ? ORDER BY vr.sort_order ASC, r.sort_order ASC`
-      ).all(v.id);
+  const ytVideos = youtubeResult.available ? youtubeVideosFrom(youtubeResult) : [];
+  if (ytVideos.length) {
+    const seen = new Set(
+      videos.filter((x) => x.youtubeUrl).map((x) => youtubeVideoId(x.youtubeUrl))
+    );
+    for (const v of ytVideos) {
+      const key = youtubeVideoId(v.url) || v.id;
+      if (key && seen.has(key)) continue;
+      if (key) seen.add(key);
       videos.push({
-        id: 'yt-latest-' + v.id,
+        id: 'yt-' + v.id,
         title: v.title,
         thumbnail: v.thumbnail,
         youtubeUrl: v.url,
         description: v.title,
-        category: 'Latest',
+        category: 'YouTube',
         status: 'published',
         releaseDate: v.publishedAt,
         featured: false,
-        resources,
+        resources: [],
         clicks: 0,
         updatedAt: new Date().toISOString(),
         isYouTubeApi: true,
@@ -103,21 +103,32 @@ router.get('/videos', async (req, res) => {
   res.json({ videos });
 });
 
+// Normalise any YouTube URL form to its 11-char video id (for de-duplication).
+function youtubeVideoId(url) {
+  if (!url) return '';
+  const m = String(url).match(/(?:v=|youtu\.be\/|youtube\.com\/shorts\/|\/embed\/)([A-Za-z0-9_-]{6,})/);
+  return m ? m[1] : String(url).trim();
+}
+
+// The YouTube payload exposes `videos`; fall back to `latestVideo` for older caches.
+function youtubeVideosFrom(result) {
+  if (!result) return [];
+  if (Array.isArray(result.videos) && result.videos.length) return result.videos;
+  return result.latestVideo ? [result.latestVideo] : [];
+}
+
 router.get('/videos/:id', async (req, res) => {
   const raw = String(req.params.id);
 
   // YouTube-powered video (surfaced from the live channel).
-  if (raw.startsWith('yt-latest-')) {
+  if (raw.startsWith('yt-')) {
+    const wanted = raw.replace(/^yt-(?:latest-)?/, '');
     const youtubeResult = await fetchFromYouTube();
-    const v = youtubeResult && youtubeResult.available && youtubeResult.latestVideo;
-    if (!v || raw !== 'yt-latest-' + v.id) {
+    const list = youtubeResult && youtubeResult.available ? youtubeVideosFrom(youtubeResult) : [];
+    const v = list.find((x) => x.id === wanted);
+    if (!v) {
       return res.status(404).json({ error: 'Video not found' });
     }
-    const resources = db.prepare(
-      `SELECT r.id, r.name, r.url, r.logo, r.description, r.category, r.featured
-       FROM video_resources vr JOIN resources r ON r.id = vr.resource_id
-       WHERE vr.video_id = ? ORDER BY vr.sort_order ASC, r.sort_order ASC`
-    ).all(v.id);
     return res.json({
       video: {
         id: raw,
@@ -125,11 +136,11 @@ router.get('/videos/:id', async (req, res) => {
         thumbnail: v.thumbnail,
         youtubeUrl: v.url,
         description: v.title,
-        category: 'Latest',
+        category: 'YouTube',
         status: 'published',
         releaseDate: v.publishedAt,
         featured: false,
-        resources,
+        resources: [],
         clicks: 0,
         updatedAt: new Date().toISOString(),
         isYouTubeApi: true,
