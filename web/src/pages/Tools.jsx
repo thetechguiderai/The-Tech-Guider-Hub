@@ -43,7 +43,7 @@ export default function Tools() {
   ];
 
   tools.push({
-    ext: '/ai/',
+    to: '/ai',
     icon: Icon.ai,
     title: 'The Tech Guider AI',
     desc: 'Open the AI workspace built by The Tech Guider — chat, code and create.',

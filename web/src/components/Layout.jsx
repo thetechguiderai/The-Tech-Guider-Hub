@@ -24,7 +24,7 @@ export const NAV = [
     children: [
       { to: '/tools', label: 'All Tools' },
       { to: '/free-fire-sensitivity', label: 'Sensitivity Generator' },
-      { href: '/ai/', label: 'Tech Guider AI' },
+      { to: '/ai', label: 'Tech Guider AI' },
     ],
   },
   {
@@ -524,7 +524,7 @@ function Footer() {
           </div>
           <div className="footer-col">
             <h5>Platform</h5>
-            <a href="/ai/">The Tech Guider AI</a>
+            <Link to="/ai">The Tech Guider AI</Link>
             <Link to="/about">About</Link>
             <Link to="/owner">Owner Access</Link>
           </div>

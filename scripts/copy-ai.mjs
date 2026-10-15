@@ -6,7 +6,7 @@
 // /ai (no slash) keep the bare path, which would resolve ./api.js to /api.js
 // and load the Hub SPA instead. Injecting <base href="/ai/"> pins every
 // relative URL to the mount path regardless of the trailing slash.
-import { cp, mkdir, rm, readdir, readFile, writeFile } from 'node:fs/promises';
+import { cp, mkdir, rm, readdir, readFile, writeFile, rename } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -19,6 +19,15 @@ const basePath = `${(process.env.TG_AI_BASE_PATH || '/ai').replace(/\/+$/, '')}/
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
 await cp(source, output, { recursive: true });
+
+// The Hub SPA now owns /ai (the native workspace). If the AI app's landing page
+// stayed at dist/ai/index.html it would shadow the SPA, so keep it reachable at
+// /ai/app.html as a fallback instead. The rest of the AI app is unchanged.
+try {
+  await rename(path.join(output, 'index.html'), path.join(output, 'app.html'));
+} catch {
+  /* source index.html not present — nothing to move */
+}
 
 const baseTag = `<base href="${basePath}">`;
 const entries = await readdir(output, { withFileTypes: true });

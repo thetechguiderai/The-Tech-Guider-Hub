@@ -108,7 +108,20 @@ function getAiApp() {
   }
   return aiAppPromise;
 }
+// Bare AI paths are rendered by the Hub SPA (the native /ai workspace,
+// /ai/chat/:id and /ai/plans). Everything else under /ai — the JSON API and the
+// legacy static AI pages — is handled by the AI app. On Vercel the CDN + the
+// rewrites in vercel.json do this; this branch matters for local development.
+const AI_SPA_PATHS = /^\/(chat\/[^/]+|plans)?$/;
 app.use('/ai', (req, res, next) => {
+  if (AI_SPA_PATHS.test(req.path)) {
+    const spa = path.join(__dirname, '..', 'dist', 'index.html');
+    if (fs.existsSync(spa)) {
+      res.setHeader('Cache-Control', 'no-cache');
+      return res.sendFile(spa);
+    }
+    return next();
+  }
   getAiApp()
     .then((aiApp) => aiApp(req, res, next))
     .catch(next);

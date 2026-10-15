@@ -12,7 +12,8 @@ import Tools from './pages/Tools';
 import Minecraft from './pages/Minecraft';
 import FreeFire from './pages/FreeFire';
 import VideoEditingPackages from './pages/VideoEditingPackages';
-import AIPage from './pages/AIPage';
+import AIWorkspace from './pages/ai/AIWorkspace';
+import AIPlans from './pages/ai/AIPlans';
 import About from './pages/About';
 import WebsitePackages from './pages/WebsitePackages';
 import GamesPackages from './pages/GamesPackages';
@@ -61,7 +62,9 @@ export default function App() {
         <Route path="/tools" element={<Layout><Tools /></Layout>} />
         <Route path="/free-fire-sensitivity" element={<Layout><FreeFire /></Layout>} />
         <Route path="/minecraft" element={<Layout><Minecraft /></Layout>} />
-        <Route path="/ai" element={<Layout><AIPage /></Layout>} />
+        <Route path="/ai" element={<Layout><AIWorkspace /></Layout>} />
+        <Route path="/ai/chat/:conversationId" element={<Layout><AIWorkspace /></Layout>} />
+        <Route path="/ai/plans" element={<Layout><AIPlans /></Layout>} />
         <Route path="/about" element={<Layout><About /></Layout>} />
         <Route path="/website-packages" element={<Layout><WebsitePackages /></Layout>} />
         <Route path="/games-packages" element={<Layout><GamesPackages /></Layout>} />

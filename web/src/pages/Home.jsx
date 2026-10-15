@@ -7,6 +7,7 @@ import { useMeta } from '../App';
 import { Icon, ErrorState, EmptyState, formatNum } from '../components/ui';
 import { VideoCard } from '../components/cards';
 import YoutubeStats from '../components/YoutubeStats';
+import AIComposer from '../components/AIComposer';
 import { socialLink, SUBSCRIBE_URL } from '../links';
 
 function RevealSection({ children }) {
@@ -213,6 +214,11 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ---------------- AI ASSISTANT ---------------- */}
+      <section className="container sec-x" id="ai">
+        <AIComposer />
+      </section>
+
       {/* ---------------- FEATURED VIDEO ---------------- */}
       {(featured || latestVideo) && (
         <RevealSection>
@@ -417,9 +423,9 @@ export default function Home() {
                 Ask questions, get recommendations and find your way around everything on the channel.
               </p>
             </div>
-            <a href="/ai/" className="btn btn-blue btn-lg">
+            <Link to="/ai" className="btn btn-blue btn-lg">
               <Icon.ai size={18} /> Open The Tech Guider AI
-            </a>
+            </Link>
           </div>
         </section>
       </RevealSection>

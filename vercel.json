@@ -15,7 +15,6 @@
     { "source": "/uploads/(.*)", "destination": "/api/index.js" },
     { "source": "/robots.txt", "destination": "/api/index.js" },
     { "source": "/sitemap.xml", "destination": "/api/index.js" },
-    { "source": "/ai", "destination": "/ai/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
