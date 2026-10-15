@@ -218,6 +218,14 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 
+// Attach a short request id to every API request so a failure the client sees
+// can be traced to the exact server log line. The id carries no secrets.
+app.use("/api", (req, res, next) => {
+  req.id = String(req.headers["x-request-id"] || nanoid(8));
+  res.setHeader("X-Request-Id", req.id);
+  next();
+});
+
 // Log API traffic only; static asset requests are skipped to keep logs readable.
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev", {
   skip: (req) => !req.path.startsWith("/api"),
@@ -929,6 +937,46 @@ function sdkErrorDetail(error, fallback) {
   return error?.error?.error?.message || error?.error?.message || error?.message || fallback;
 }
 
+// Maps a normalized provider failure to a stable, user-safe response. Provider
+// internals (raw messages, keys) stay in the server log; the client only gets a
+// category, a friendly message, and the request id.
+function classifyProviderError(err, model) {
+  const name = model?.name || "This model";
+  if (err?.config) {
+    const envName = `${String(err.provider || "").toUpperCase()}_API_KEY`;
+    return { status: 503, code: "provider_not_configured", message: `${name} isn't configured yet (missing ${envName}).` };
+  }
+  if (err?.empty) {
+    return { status: 502, code: "empty_response", message: `${name} returned an empty response. Please try again.` };
+  }
+
+  const raw = String(providerErrorText(err?.detail, "") || "").toLowerCase();
+  const statusCode = err?.detail?.status || err?.detail?.statusCode || err?.detail?.response?.status;
+  const detailCode = String(err?.detail?.code || "").toLowerCase();
+
+  // Billing/quota failures first: OpenAI reports exhausted credit as HTTP 429,
+  // so this must be checked before the generic rate-limit branch.
+  if (detailCode === "credit_balance_exhausted" ||
+      /insufficient_quota|credit_balance|no credits|exceeded your current quota|billing hard limit|out of credit/.test(raw)) {
+    return { status: 503, code: "provider_quota", message: `${name} is temporarily unavailable: the provider account has no remaining credit.` };
+  }
+  if (statusCode === 401 ||
+      /invalid x-api-key|invalid_api_key|invalid api key|incorrect api key|user not found|authentication_error|access_token_type_unsupported|unauthenticated|unauthorized|no auth credentials/.test(raw)) {
+    return { status: 503, code: "provider_auth", message: `${name} is temporarily unavailable: its provider credentials are invalid.` };
+  }
+  if (statusCode === 404 ||
+      /model_not_found|does not exist|no such model|unknown model|not a valid model|model .*not (found|available|supported)/.test(raw)) {
+    return { status: 502, code: "model_unavailable", message: `${name} is temporarily unavailable: the configured model was rejected by the provider.` };
+  }
+  if (statusCode === 429 || /rate.?limit|too many requests/.test(raw)) {
+    return { status: 429, code: "provider_rate_limit", message: `${name} is busy right now (provider rate limit). Please retry in a moment.` };
+  }
+  if (statusCode === 408 || statusCode === 504 || /timeout|timed out|etimedout|econnaborted|aborted|deadline/.test(raw)) {
+    return { status: 504, code: "provider_timeout", message: `${name} timed out waiting for the provider. Please retry.` };
+  }
+  return { status: 502, code: "provider_error", message: `${name} could not complete the request (provider error). Please retry.` };
+}
+
 // ---------- PROVIDER CALLS ----------
 // Each provider uses its official SDK. Errors are normalized to the
 // { config, detail, provider } shape the chat routes already understand.
@@ -955,7 +1003,10 @@ async function callProvider(provider, model, messages) {
         messages,
         ...(provider === "openrouter" ? { max_tokens: 1024 } : {}),
       });
-      return completion.choices?.[0]?.message?.content || "";
+      const content = completion.choices?.[0]?.message?.content || "";
+      // An empty completion is a provider failure, never a valid answer.
+      if (!content.trim()) throw { empty: true, provider };
+      return content;
     } catch (error) {
       throw { config: false, detail: sdkErrorDetail(error, `${provider} request failed.`), provider };
     }
@@ -976,7 +1027,9 @@ async function callProvider(provider, model, messages) {
         ...(system ? { system } : {}),
         messages: chat.length ? chat : [{ role: "user", content: "" }],
       });
-      return (message.content || []).map((block) => block.text).filter(Boolean).join("\n");
+      const text = (message.content || []).map((block) => block.text).filter(Boolean).join("\n");
+      if (!text.trim()) throw { empty: true, provider };
+      return text;
     } catch (error) {
       throw { config: false, detail: sdkErrorDetail(error, "anthropic request failed."), provider };
     }
@@ -989,7 +1042,9 @@ async function callProvider(provider, model, messages) {
     const contents = messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
     try {
       const result = await generativeModel.generateContent({ contents });
-      return result.response.text();
+      const text = result.response.text();
+      if (!text || !text.trim()) throw { empty: true, provider };
+      return text;
     } catch (error) {
       throw { config: false, detail: sdkErrorDetail(error, "google request failed."), provider };
     }
@@ -1079,12 +1134,12 @@ app.post("/api/chat", async (req, res) => {
     res.json({ reply, remaining: limit.remaining, conversationId: conv?.id || null });
   } catch (err) {
     logRequest(user ? user.id : null, modelId, "error");
-    if (err.config) return res.status(503).json({ error: `${model.name} isn't configured yet (missing ${err.provider.toUpperCase()}_API_KEY).` });
-    const providerMessage = providerErrorText(err.detail, `${model.name} could not reach its ${model.provider} provider.`);
-    console.error(`[chat] ${model.name} provider failure:`, providerMessage);
-    res.status(502).json({
-      error: `${model.name} provider error: ${providerMessage}`,
-    });
+    const failure = classifyProviderError(err, model);
+    console.error(
+      `[chat] req=${req.id} model=${modelId} provider=${model.provider} code=${failure.code}:`,
+      providerErrorText(err?.detail, err?.empty ? "empty provider response" : "provider failure")
+    );
+    res.status(failure.status).json({ error: failure.message, code: failure.code, requestId: req.id });
   }
 });
 
@@ -1105,6 +1160,27 @@ app.post("/api/image/generate", requireAuth, async (req, res) => {
     console.error(err);
     res.status(502).json({ error: "Image generation failed." });
   }
+});
+
+// Reports which AI providers have credentials configured (booleans only; never
+// key material). Lets the owner see why a model is unavailable without shelling
+// into the environment.
+const PROVIDER_KEY_ENV = {
+  openai: "OPENAI_API_KEY",
+  openrouter: "OPENROUTER_API_KEY",
+  anthropic: "ANTHROPIC_API_KEY",
+  google: "GOOGLE_API_KEY",
+};
+app.get("/api/providers/status", (req, res) => {
+  const providers = {};
+  for (const [name, envName] of Object.entries(PROVIDER_KEY_ENV)) {
+    providers[name] = { configured: Boolean(process.env[envName]) };
+  }
+  res.json({
+    providers,
+    database: { persistent: Boolean(process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN) },
+    requestId: req.id,
+  });
 });
 
 // An API request must never receive the HTML app shell. OAuth endpoints above are
