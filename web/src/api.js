@@ -41,6 +41,10 @@ export const publicApi = {
       method: 'POST',
       body: JSON.stringify({ type, target, detail }),
     }).catch(() => null),
+  // --- TikTok (official integration: real data only) ---
+  tiktokProfile: () => request('/api/tiktok/profile'),
+  tiktokVideos: () => request('/api/tiktok/videos'),
+  tiktokLive: () => request('/api/tiktok/live'),
 };
 
 export const ownerApi = {
@@ -97,4 +101,31 @@ export const ownerApi = {
   auditLogs: (limit = 100) => request(`/api/owner/audit-logs?limit=${limit}`),
   clearAudit: () => request('/api/owner/audit-logs/clear', { method: 'POST' }),
   backup: () => request('/api/owner/backup'),
+
+  // --- TikTok (official integration, owner admin) ---
+  tiktokConfig: () => request('/api/tiktok/config'),
+  updateTiktok: (body) => request('/api/tiktok/config', { method: 'PUT', body: JSON.stringify(body) }),
+  tiktokRefresh: () => request('/api/tiktok/refresh', { method: 'POST' }),
+  tiktokAuthStart: (post) => request(`/api/tiktok/auth/start${post ? '?post=1' : ''}`),
+  tiktokDisconnect: () => request('/api/tiktok/auth/disconnect', { method: 'POST' }),
+  tiktokPreflight: () => request('/api/tiktok/publish/preflight'),
+  tiktokPublish: (formData, onProgress) => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/tiktok/publish');
+      // No Content-Type header: the browser sets the multipart boundary.
+      xhr.upload.onprogress = (e) => {
+        if (onProgress && e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+      };
+      xhr.onload = () => {
+        let data = {};
+        try { data = JSON.parse(xhr.responseText || '{}'); } catch { /* keep {} */ }
+        if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+        else reject(new Error(data.error || `Upload failed (${xhr.status})`));
+      };
+      xhr.onerror = () => reject(new Error('The upload could not reach the server.'));
+      xhr.send(formData);
+    });
+  },
+  tiktokPublishStatus: (id) => request(`/api/tiktok/publish/${id}/status`),
 };

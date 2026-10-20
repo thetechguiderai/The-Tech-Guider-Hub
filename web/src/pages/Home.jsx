@@ -8,6 +8,7 @@ import { Icon, ErrorState, EmptyState, formatNum } from '../components/ui';
 import { VideoCard } from '../components/cards';
 import YoutubeStats from '../components/YoutubeStats';
 import AIComposer from '../components/AIComposer';
+import TikTokPreview from '../components/TikTokPreview';
 import { socialLink, SUBSCRIBE_URL } from '../links';
 
 function RevealSection({ children }) {
@@ -218,6 +219,13 @@ export default function Home() {
       <section className="container sec-x" id="ai">
         <AIComposer />
       </section>
+
+      {/* ---------------- TIKTOK PREVIEW ---------------- */}
+      <RevealSection>
+        <div className="container">
+          <TikTokPreview />
+        </div>
+      </RevealSection>
 
       {/* ---------------- FEATURED VIDEO ---------------- */}
       {(featured || latestVideo) && (

@@ -18,6 +18,7 @@ export const NAV = [
       { to: '/videos', label: 'Gaming Tutorials' },
     ],
   },
+  { to: '/tiktok', label: 'TikTok', icon: 'tiktok' },
   {
     label: 'Tools',
     icon: 'tool',
@@ -511,6 +512,7 @@ function Footer() {
               ['/resources', 'Resources'],
               ['/videos', 'Videos'],
               ['/tools', 'Tools'],
+              ['/tiktok', 'TikTok'],
               ['/minecraft', 'Minecraft'],
               ['/free-fire-sensitivity', 'Free Fire'],
               ['/website-packages', 'Website'],

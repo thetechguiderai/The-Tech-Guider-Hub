@@ -7,6 +7,7 @@ import Overview from './Overview';
 import VideosAdmin from './VideosAdmin';
 import ResourcesAdmin from './ResourcesAdmin';
 import YouTubeAdmin from './YouTubeAdmin';
+import TikTokAdmin from './TikTokAdmin';
 import SensitivityAdmin from './SensitivityAdmin';
 import MinecraftAdmin from './MinecraftAdmin';
 import RewardsAdmin from './RewardsAdmin';
@@ -21,6 +22,7 @@ const NAV = [
     { to: '/owner/dashboard/videos', label: 'Videos', icon: Icon.video },
     { to: '/owner/dashboard/resources', label: 'Resources', icon: Icon.resource },
     { to: '/owner/dashboard/youtube', label: 'YouTube', icon: Icon.chart },
+    { to: '/owner/dashboard/tiktok', label: 'TikTok', icon: Icon.tiktok },
     { to: '/owner/dashboard/sensitivity', label: 'FF Sensitivity', icon: Icon.tool },
     { to: '/owner/dashboard/minecraft', label: 'Minecraft', icon: Icon.minecraft },
     { to: '/owner/dashboard/rewards', label: 'Rewards', icon: Icon.star },
@@ -41,6 +43,7 @@ const PAGE_TITLES = {
   '/owner/dashboard/videos': 'Video Management',
   '/owner/dashboard/resources': 'Resource Management',
   '/owner/dashboard/youtube': 'YouTube Settings',
+  '/owner/dashboard/tiktok': 'TikTok Studio',
   '/owner/dashboard/sensitivity': 'FF Sensitivity Profiles',
   '/owner/dashboard/minecraft': 'Minecraft Management',
   '/owner/dashboard/rewards': 'Reward Inventory',
@@ -153,6 +156,7 @@ export default function Dashboard() {
           <Route path="videos" element={<VideosAdmin />} />
           <Route path="resources" element={<ResourcesAdmin />} />
           <Route path="youtube" element={<YouTubeAdmin />} />
+          <Route path="tiktok" element={<TikTokAdmin />} />
           <Route path="sensitivity" element={<SensitivityAdmin />} />
           <Route path="minecraft" element={<MinecraftAdmin />} />
           <Route path="rewards" element={<RewardsAdmin />} />

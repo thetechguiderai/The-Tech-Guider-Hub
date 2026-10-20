@@ -11,6 +11,7 @@ import VideoDetail from './pages/VideoDetail';
 import Tools from './pages/Tools';
 import Minecraft from './pages/Minecraft';
 import FreeFire from './pages/FreeFire';
+import TikTok from './pages/TikTok';
 import VideoEditingPackages from './pages/VideoEditingPackages';
 import AIWorkspace from './pages/ai/AIWorkspace';
 import AIPlans from './pages/ai/AIPlans';
@@ -62,6 +63,7 @@ export default function App() {
         <Route path="/tools" element={<Layout><Tools /></Layout>} />
         <Route path="/free-fire-sensitivity" element={<Layout><FreeFire /></Layout>} />
         <Route path="/minecraft" element={<Layout><Minecraft /></Layout>} />
+        <Route path="/tiktok" element={<Layout><TikTok /></Layout>} />
         <Route path="/ai" element={<Layout><AIWorkspace /></Layout>} />
         <Route path="/ai/chat/:conversationId" element={<Layout><AIWorkspace /></Layout>} />
         <Route path="/ai/plans" element={<Layout><AIPlans /></Layout>} />

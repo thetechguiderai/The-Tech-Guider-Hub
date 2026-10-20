@@ -9,6 +9,7 @@ const { db, dbPath, dataDir } = require('./db');
 const { requireSecret, rateLimit, audit } = require('./security');
 const publicRoutes = require('./routes/public');
 const ownerRoutes = require('./routes/owner');
+const tiktokRoutes = require('./routes/tiktok');
 
 requireSecret();
 
@@ -90,6 +91,7 @@ app.post('/api/owner/upload', (req, res, next) => {
 // ---- API ----
 app.use('/api/public', publicRoutes);
 app.use('/api/owner', ownerRoutes);
+app.use('/api/tiktok', tiktokRoutes);
 
 // ---- The Tech Guider AI (merged, served under /ai) ----
 // The AI app is ESM while this server is CommonJS, so it is loaded lazily with
@@ -161,6 +163,7 @@ app.get('/sitemap.xml', (req, res) => {
     { loc: '/tools', priority: '0.7', freq: 'weekly' },
     { loc: '/free-fire-sensitivity', priority: '0.8', freq: 'weekly' },
     { loc: '/minecraft', priority: '0.7', freq: 'weekly' },
+    { loc: '/tiktok', priority: '0.7', freq: 'daily' },
     { loc: '/ai', priority: '0.6', freq: 'weekly' },
     { loc: '/video-editing-packages', priority: '0.7', freq: 'weekly' },
     { loc: '/about', priority: '0.5', freq: 'monthly' },

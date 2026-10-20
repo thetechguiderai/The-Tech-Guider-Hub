@@ -2572,3 +2572,164 @@ p {
   .aiw-msg-body { font-size: 14px; }
 }
 
+
+/* ------------------------ TikTok integration styles ----------------------- */
+/* Consistent with the hub design tokens: dark, neutral, subtle borders.      */
+
+.tt-live-row {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin: 6px 0 18px;
+}
+.tt-live-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--text-3); display: inline-block;
+}
+
+.tt-profile-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  flex-wrap: wrap;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 14px 16px;
+  margin-bottom: 20px;
+  transition: border-color .2s var(--ease);
+}
+.tt-profile-bar:hover { border-color: var(--border-strong); }
+.tt-profile-link { display: flex; align-items: center; gap: 12px; min-width: 0; text-decoration: none; color: var(--text); }
+.tt-avatar {
+  width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+  display: grid; place-items: center;
+  background: var(--bg-3); border: 1px solid var(--border);
+  font-weight: 800; letter-spacing: -.02em; color: var(--text-2);
+  font-size: 14px;
+}
+.tt-avatar-lg { width: 64px; height: 64px; border-radius: 16px; font-size: 18px; }
+.tt-real-badge { margin-top: 8px; display: inline-flex; align-items: center; gap: 6px; }
+
+/* horizontal embed rail on the homepage */
+.tt-video-row {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(240px, 300px);
+  gap: 16px; overflow-x: auto; overscroll-behavior-x: contain;
+  padding: 4px 4px 14px; margin: 0 -4px; scrollbar-width: thin;
+}
+.tt-video-row::-webkit-scrollbar { height: 8px; }
+.tt-video-row::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+.tt-video-row .tt-video-card { min-height: 380px; }
+
+/* page grid for the dedicated /tiktok page */
+.tt-video-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 300px));
+  gap: 16px; align-items: start;
+}
+.tt-video-grid .tt-video-card { min-height: 380px; }
+
+.tt-video-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); overflow: hidden;
+  display: flex; flex-direction: column;
+  transition: border-color .2s var(--ease), transform .2s var(--ease);
+}
+.tt-video-card:hover { border-color: var(--border-strong); }
+.tt-embed-wrap { width: 100%; min-height: 340px; }
+
+.tiktok-embed { min-width: 220px !important; margin: 0 !important; }
+.tt-embed-fallback .tiktok-embed { display: none; }
+
+.tt-video-fallback {
+  display: flex; gap: 12px; align-items: center; padding: 16px;
+  color: var(--text); text-decoration: none;
+}
+.tt-video-fallback strong { display: block; margin-bottom: 2px; }
+.tt-video-fallback:hover strong { text-decoration: underline; }
+.tt-video-icon {
+  width: 44px; height: 44px; flex-shrink: 0; border-radius: 12px;
+  background: var(--bg-3); border: 1px solid var(--border);
+  display: grid; place-items: center; color: var(--text-2);
+}
+
+.tt-empty { background: transparent; }
+.state { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+
+/* dedicated page hero */
+.tt-hero {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius-xl); padding: 26px;
+}
+.tt-hero-inner {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 18px; flex-wrap: wrap;
+}
+.tt-hero-main { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.tt-hero-title { font-size: clamp(22px, 4vw, 30px); letter-spacing: -.02em; margin: 0; }
+.tt-hero-handle {
+  color: var(--text-3); font-size: 14px; text-decoration: none; word-break: break-all;
+}
+.tt-hero-handle:hover { color: var(--text-2); text-decoration: underline; }
+.tt-hero-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.tt-live-state { padding: 26px; text-align: center; align-items: center; }
+.tt-live-state .state-icon { margin: 0 auto 10px; }
+
+/* skeletons */
+.tt-skel-row {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 300px));
+  gap: 16px;
+}
+.tt-skel-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); overflow: hidden;
+  min-height: 380px;
+}
+
+/* owner admin bits */
+.tt-checklist { margin: 12px 0 0; padding-left: 20px; display: grid; gap: 8px; font-size: 14px; color: var(--text-2); list-style: decimal; }
+.tt-checklist code {
+  background: var(--bg-3); border: 1px solid var(--border);
+  padding: 1px 6px; border-radius: 6px; font-size: 12.5px;
+  font-family: var(--mono); color: var(--text);
+}
+.tt-checklist ul { margin-top: 6px; list-style: disc; padding-left: 20px; }
+.tt-connect-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+  margin-top: 14px; padding: 14px 16px;
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.tt-progress { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.tt-progress-bar {
+  flex: 1; height: 8px; border-radius: 999px;
+  background: var(--bg-3); overflow: hidden; min-width: 160px;
+}
+.tt-progress-bar span {
+  display: block; height: 100%;
+  background: var(--blue); border-radius: 999px;
+  transition: width .25s var(--ease);
+}
+.tt-job {
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 14px 16px;
+}
+.admin-page { display: grid; gap: 20px; }
+
+@media (max-width: 720px) {
+  .tt-hero { padding: 20px; }
+  .tt-video-row { grid-auto-columns: minmax(220px, 260px); }
+  .tt-video-row .tt-video-card,
+  .tt-video-grid .tt-video-card { min-height: 340px; }
+}
+
+/* owner-reported profile card bits */
+.tt-avatar-img { object-fit: cover; }
+.tt-source-badge { flex-shrink: 0; }
+.tt-stats-row {
+  display: flex; gap: 18px; flex-wrap: wrap;
+  margin-bottom: 18px;
+  color: var(--text-3); font-size: 14px;
+}
+.tt-stats-row b { color: var(--text); font-weight: 700; }
+.tt-stats-page { padding: 18px 2px 0; margin-bottom: 0; }
+.tt-creator-embed { max-width: 480px; }
+
+@media (max-width: 720px) {
+  .tt-stats-row { gap: 12px; }
+}

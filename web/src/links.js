@@ -5,6 +5,7 @@ export const SITE_LINKS = {
   youtube: 'https://www.youtube.com/@thetechguider01',
   discord: 'https://discord.gg/dczyhM8ZwV',
   instagram: 'https://www.instagram.com/legend0.26/',
+  tiktok: 'https://www.tiktok.com/@legend0.26',
 };
 
 // Resolve a social link: prefer the configured site value, else the fallback.

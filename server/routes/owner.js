@@ -665,7 +665,8 @@ router.get('/backup', requireOwner, (req, res) => {
   const tables = [
     'videos', 'resources', 'video_resources', 'minecraft_listings',
     'reward_codes', 'announcements', 'sensitivity_profiles',
-    'youtube_settings', 'settings', 'owners', 'audit_logs', 'analytics_events',
+    'youtube_settings', 'tiktok_settings', 'tiktok_accounts', 'tiktok_uploads',
+    'settings', 'owners', 'audit_logs', 'analytics_events',
   ];
   const dump = {};
   for (const t of tables) {
@@ -688,3 +689,4 @@ router.get('/backup', requireOwner, (req, res) => {
 });
 
 module.exports = router;
+module.exports.requireOwner = requireOwner;

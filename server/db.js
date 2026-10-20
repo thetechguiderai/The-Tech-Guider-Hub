@@ -179,9 +179,94 @@ CREATE TABLE IF NOT EXISTS owner_failures (
   lockout_until TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_owner_failures_ip ON owner_failures (ip_hash);
+
+-- ---- TikTok integration (backward compatible: safe on existing DBs) --------
+-- Public settings + curated canonical video list + cache for real API data.
+CREATE TABLE IF NOT EXISTS tiktok_settings (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  profile_url TEXT NOT NULL DEFAULT '',
+  display_handle TEXT NOT NULL DEFAULT '',
+  total_shares_enabled INTEGER NOT NULL DEFAULT 1,
+  refresh_interval INTEGER NOT NULL DEFAULT 900,
+  config_status TEXT NOT NULL DEFAULT 'embed_only',
+  last_fetch_at TEXT NOT NULL DEFAULT '',
+  cached_payload TEXT NOT NULL DEFAULT '{}',
+  curated_json TEXT NOT NULL DEFAULT '[]',
+  display_name TEXT NOT NULL DEFAULT '',
+  avatar_url TEXT NOT NULL DEFAULT '',
+  stat_followers TEXT NOT NULL DEFAULT '',
+  stat_following TEXT NOT NULL DEFAULT '',
+  stat_likes TEXT NOT NULL DEFAULT '',
+  stat_views TEXT NOT NULL DEFAULT '',
+  stats_updated_at TEXT NOT NULL DEFAULT ''
+);
+
+-- One connected TikTok creator account (tokens stored encrypted, never logged).
+CREATE TABLE IF NOT EXISTS tiktok_accounts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  open_id TEXT NOT NULL UNIQUE,
+  display_name TEXT NOT NULL DEFAULT '',
+  avatar_url TEXT NOT NULL DEFAULT '',
+  scopes TEXT NOT NULL DEFAULT '',
+  access_token_enc TEXT NOT NULL DEFAULT '',
+  refresh_token_enc TEXT NOT NULL DEFAULT '',
+  access_expires_at TEXT NOT NULL DEFAULT '',
+  refresh_expires_at TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Content Posting API jobs (real statuses only; never fabricated).
+CREATE TABLE IF NOT EXISTS tiktok_uploads (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  publish_id TEXT NOT NULL DEFAULT '',
+  open_id TEXT NOT NULL DEFAULT '',
+  caption TEXT NOT NULL DEFAULT '',
+  privacy TEXT NOT NULL DEFAULT 'SELF_ONLY',
+  status TEXT NOT NULL DEFAULT 'queued',
+  status_detail TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_tiktok_uploads_status ON tiktok_uploads (status);
 `);
 
 const now = () => new Date().toISOString();
+
+// Backward-compatible column migration for databases created before the
+// owner-reported TikTok profile stats existed.
+function addColumnIfMissing(table, column, ddl) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+  if (!cols.includes(column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+  }
+}
+[
+  ['tiktok_settings', 'display_name', "TEXT NOT NULL DEFAULT ''"],
+  ['tiktok_settings', 'avatar_url', "TEXT NOT NULL DEFAULT ''"],
+  ['tiktok_settings', 'stat_followers', "TEXT NOT NULL DEFAULT ''"],
+  ['tiktok_settings', 'stat_following', "TEXT NOT NULL DEFAULT ''"],
+  ['tiktok_settings', 'stat_likes', "TEXT NOT NULL DEFAULT ''"],
+  ['tiktok_settings', 'stat_views', "TEXT NOT NULL DEFAULT ''"],
+  ['tiktok_settings', 'stats_updated_at', "TEXT NOT NULL DEFAULT ''"],
+].forEach(([t, c, d]) => addColumnIfMissing(t, c, d));
+
+// One-time defaults for the creator's own card, exactly as reported by the
+// owner. Editable any time in Owner Dashboard -> TikTok. Displayed to the
+// public as "owner-reported" data until the official API takes over.
+try {
+  db.prepare(
+    `INSERT OR IGNORE INTO tiktok_settings (id) VALUES (1)`
+  ).run();
+  db.prepare(
+    `UPDATE tiktok_settings
+       SET display_name = ?, stat_followers = ?, stat_following = ?, stat_likes = ?,
+           stat_views = ?, stats_updated_at = ?
+     WHERE (display_name = '' AND stat_followers = '')`
+  ).run('乂ɴɪɢʜᴛᴍᴀʀᴇ乂', '65', '15', '3,531', '34.4K', now());
+} catch {
+  /* tolerate read-only FS (Vercel serverless) */
+}
 
 function getSettings() {
   const rows = db.prepare('SELECT key, value FROM settings').all();
@@ -200,7 +285,7 @@ const DEFAULT_SETTINGS = {
   youtube: 'https://www.youtube.com/@thetechguider01',
   discord: 'https://discord.gg/dczyhM8ZwV',
   instagram: 'https://www.instagram.com/legend0.26/',
-  tiktok: '',
+  tiktok: 'https://www.tiktok.com/@legend0.26',
   x: '',
   website: '',
   ai_url: '',
