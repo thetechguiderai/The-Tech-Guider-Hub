@@ -129,6 +129,7 @@ CREATE TABLE IF NOT EXISTS reward_codes (
   price TEXT DEFAULT '',
   availability TEXT NOT NULL DEFAULT 'available',
   notes TEXT DEFAULT '',
+  coin_cost INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -163,6 +164,7 @@ CREATE TABLE IF NOT EXISTS shop_items (
   price TEXT DEFAULT '',
   availability TEXT NOT NULL DEFAULT 'available',
   link_url TEXT DEFAULT '',
+  coin_cost INTEGER NOT NULL DEFAULT 0,
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -179,6 +181,35 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_audit_time ON audit_logs (created_at);
+
+-- ---- Coins & check-ins (linked to AI accounts via the tg_session token) -----
+CREATE TABLE IF NOT EXISTS user_points (
+  user_id TEXT PRIMARY KEY,
+  email TEXT DEFAULT '',
+  name TEXT DEFAULT '',
+  points INTEGER NOT NULL DEFAULT 0,
+  total_earned INTEGER NOT NULL DEFAULT 0,
+  streak INTEGER NOT NULL DEFAULT 0,
+  last_checkin TEXT DEFAULT '',
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS coin_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  email TEXT DEFAULT '',
+  source TEXT NOT NULL DEFAULT 'shop',
+  source_id INTEGER,
+  title TEXT NOT NULL,
+  cost INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'pending',
+  delivered_code_enc TEXT DEFAULT '',
+  note TEXT DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  decided_at TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_coin_requests_user ON coin_requests (user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_coin_requests_status ON coin_requests (status, created_at);
 
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
@@ -262,6 +293,9 @@ function addColumnIfMissing(table, column, ddl) {
   ['tiktok_settings', 'stat_likes', "TEXT NOT NULL DEFAULT ''"],
   ['tiktok_settings', 'stat_views', "TEXT NOT NULL DEFAULT ''"],
   ['tiktok_settings', 'stats_updated_at', "TEXT NOT NULL DEFAULT ''"],
+  // Coins system: redeemable shop items & rewards carry a coin cost.
+  ['shop_items', 'coin_cost', 'INTEGER NOT NULL DEFAULT 0'],
+  ['reward_codes', 'coin_cost', 'INTEGER NOT NULL DEFAULT 0'],
 ].forEach(([t, c, d]) => addColumnIfMissing(t, c, d));
 
 // One-time defaults for the creator's own card, exactly as reported by the

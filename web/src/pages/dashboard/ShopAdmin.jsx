@@ -17,7 +17,7 @@ const CAT_LABEL = Object.fromEntries(CATEGORIES.map((c) => [c.key, c.label]));
 
 const EMPTY = {
   category: 'reward', title: '', description: '', price: '',
-  availability: 'available', link_url: '', sort_order: 0,
+  availability: 'available', link_url: '', coin_cost: 0, sort_order: 0,
 };
 
 export default function ShopAdmin() {
@@ -166,6 +166,12 @@ export default function ShopAdmin() {
               <label className="field-label">Link URL (optional)</label>
               <input className="input" value={editing.link_url} onChange={(e) => patch('link_url', e.target.value)} placeholder="https://…" />
             </div>
+            <div className="field">
+              <label className="field-label">Coin cost (0 = coins wala redeem nahi)</label>
+              <input className="input" type="number" min="0" value={editing.coin_cost} onChange={(e) => patch('coin_cost', e.target.value)} placeholder="e.g. 150" />
+            </div>
+          </div>
+          <div className="form-grid">
             <div className="field">
               <label className="field-label">Sort order</label>
               <input className="input" type="number" value={editing.sort_order} onChange={(e) => patch('sort_order', e.target.value)} />

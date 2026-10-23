@@ -12,6 +12,7 @@ import SensitivityAdmin from './SensitivityAdmin';
 import MinecraftAdmin from './MinecraftAdmin';
 import RewardsAdmin from './RewardsAdmin';
 import ShopAdmin from './ShopAdmin';
+import CoinRequestsAdmin from './CoinRequestsAdmin';
 import AnnouncementsAdmin from './AnnouncementsAdmin';
 import AnalyticsAdmin from './AnalyticsAdmin';
 import AuditAdmin from './AuditAdmin';
@@ -30,6 +31,7 @@ const NAV = [
     { to: '/owner/dashboard/shop', label: 'Shop', icon: Icon.gift },
   ]},
   { group: 'Monitor', items: [
+    { to: '/owner/dashboard/coins', label: 'Coins', icon: Icon.gift },
     { to: '/owner/dashboard/announcements', label: 'Announcements', icon: Icon.alert },
     { to: '/owner/dashboard/analytics', label: 'Analytics', icon: Icon.grid },
   ]},
@@ -50,6 +52,7 @@ const PAGE_TITLES = {
   '/owner/dashboard/minecraft': 'Minecraft Management',
   '/owner/dashboard/rewards': 'Reward Inventory',
   '/owner/dashboard/shop': 'Shop Management',
+  '/owner/dashboard/coins': 'Coin Requests',
   '/owner/dashboard/announcements': 'Announcements',
   '/owner/dashboard/analytics': 'Analytics',
   '/owner/dashboard/social': 'Social Links & Branding',
@@ -164,6 +167,7 @@ export default function Dashboard() {
           <Route path="minecraft" element={<MinecraftAdmin />} />
           <Route path="rewards" element={<RewardsAdmin />} />
           <Route path="shop" element={<ShopAdmin />} />
+          <Route path="coins" element={<CoinRequestsAdmin />} />
           <Route path="announcements" element={<AnnouncementsAdmin />} />
           <Route path="analytics" element={<AnalyticsAdmin />} />
           <Route path="social" element={<SettingsAdmin />} />

@@ -481,10 +481,11 @@ router.post('/rewards', requireOwner, (req, res) => {
   const encrypted = code ? encryptSecret(code) : '';
   const hint = code ? `${code.slice(0, 2)}••••••${code.slice(-2)}` : '';
   const info = db.prepare(
-    `INSERT INTO reward_codes (label, code_encrypted, code_hint, edition, price, availability, notes) VALUES (?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO reward_codes (label, code_encrypted, code_hint, edition, price, availability, notes, coin_cost) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     String(b.label).trim(), encrypted, hint, String(b.edition || 'java'), String(b.price || ''),
-    String(b.availability || 'available'), String(b.notes || '')
+    String(b.availability || 'available'), String(b.notes || ''),
+    Math.max(0, Number.isFinite(Number(b.coin_cost)) ? Math.floor(Number(b.coin_cost)) : 0)
   );
   audit('reward_created', { target: `reward:${info.lastInsertRowid}`, result: 'success', detail: b.label.trim().slice(0, 60), ip: ownerIp(req) });
   res.status(201).json({ id: Number(info.lastInsertRowid) });
@@ -501,11 +502,13 @@ router.put('/rewards/:id', requireOwner, (req, res) => {
   const hint = b.code ? `${String(b.code).slice(0, 2)}••••••${String(b.code).slice(-2)}` : row.code_hint;
   db.prepare(
     `UPDATE reward_codes SET label = ?, code_encrypted = ?, code_hint = ?, edition = ?, price = ?,
-       availability = ?, notes = ?, updated_at = ? WHERE id = ?`
+       availability = ?, notes = ?, coin_cost = ?, updated_at = ? WHERE id = ?`
   ).run(
     String(b.label ?? row.label).trim(), encrypted, hint, String(b.edition ?? row.edition),
     String(b.price ?? row.price), String(b.availability ?? row.availability),
-    String(b.notes ?? row.notes), now(), id
+    String(b.notes ?? row.notes),
+    Math.max(0, Number.isFinite(Number(b.coin_cost)) ? Math.floor(Number(b.coin_cost)) : Number(row.coin_cost || 0)),
+    now(), id
   );
   audit('reward_updated', { target: `reward:${id}`, result: 'success', detail: (b.label ?? row.label).slice(0, 60), ip: ownerIp(req) });
   res.json({ ok: true });
@@ -541,6 +544,7 @@ function shopBody(b) {
     price: String(b.price || '').trim(),
     availability: SHOP_AVAILABILITY.includes(b.availability) ? b.availability : 'available',
     link_url: String(b.link_url || '').trim(),
+    coin_cost: Math.max(0, Number.isFinite(Number(b.coin_cost)) ? Math.floor(Number(b.coin_cost)) : 0),
     sort_order: Number.isFinite(Number(b.sort_order)) ? Number(b.sort_order) : 0,
   };
 }
@@ -554,9 +558,9 @@ router.post('/shop-items', requireOwner, (req, res) => {
   const item = shopBody(req.body || {});
   if (!item.title) return res.status(400).json({ error: 'Title is required.' });
   const info = db.prepare(
-    `INSERT INTO shop_items (category, title, description, price, availability, link_url, sort_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
-  ).run(item.category, item.title, item.description, item.price, item.availability, item.link_url, item.sort_order);
+    `INSERT INTO shop_items (category, title, description, price, availability, link_url, coin_cost, sort_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(item.category, item.title, item.description, item.price, item.availability, item.link_url, item.coin_cost, item.sort_order);
   audit('shop_item_created', { target: `shop:${info.lastInsertRowid}`, result: 'success', detail: item.title.slice(0, 60), ip: ownerIp(req) });
   res.status(201).json({ id: Number(info.lastInsertRowid) });
 });
@@ -573,13 +577,14 @@ router.put('/shop-items/:id', requireOwner, (req, res) => {
     price: b.price ?? row.price,
     availability: b.availability ?? row.availability,
     link_url: b.link_url ?? row.link_url,
+    coin_cost: b.coin_cost ?? row.coin_cost,
     sort_order: b.sort_order ?? row.sort_order,
   });
   if (!merged.title) return res.status(400).json({ error: 'Title is required.' });
   db.prepare(
     `UPDATE shop_items SET category = ?, title = ?, description = ?, price = ?, availability = ?,
-       link_url = ?, sort_order = ?, updated_at = ? WHERE id = ?`
-  ).run(merged.category, merged.title, merged.description, merged.price, merged.availability, merged.link_url, merged.sort_order, now(), id);
+       link_url = ?, coin_cost = ?, sort_order = ?, updated_at = ? WHERE id = ?`
+  ).run(merged.category, merged.title, merged.description, merged.price, merged.availability, merged.link_url, merged.coin_cost, merged.sort_order, now(), id);
   audit('shop_item_updated', { target: `shop:${id}`, result: 'success', detail: merged.title.slice(0, 60), ip: ownerIp(req) });
   res.json({ ok: true });
 });

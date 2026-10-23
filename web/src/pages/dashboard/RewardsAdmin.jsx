@@ -6,7 +6,7 @@ import { Modal, Confirm, Field } from './dash';
 const TONE = { available: 'green', limited: 'amber', coming_soon: 'amber', claimed: 'red', sold_out: 'red' };
 
 const EMPTY = {
-  label: '', code: '', edition: 'java', price: '', availability: 'available', notes: ''
+  label: '', code: '', edition: 'java', price: '', availability: 'available', notes: '', coin_cost: 0
 };
 
 export default function RewardsAdmin() {
@@ -183,6 +183,10 @@ export default function RewardsAdmin() {
             <div className="field">
               <label className="field-label">Price</label>
               <input className="input" value={editing.price} onChange={(e) => patch('price', e.target.value)} placeholder="Free / $2" />
+            </div>
+            <div className="field">
+              <label className="field-label">Coin cost (users redeem kar sakein)</label>
+              <input className="input" type="number" min="0" value={editing.coin_cost} onChange={(e) => patch('coin_cost', e.target.value)} placeholder="e.g. 200 (0 = redeem off)" />
             </div>
           </div>
           <Field label="Notes">

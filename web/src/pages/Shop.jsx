@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useMeta } from '../App';
 import { useSite } from '../context';
 import { publicApi } from '../api';
 import { Badge, Icon, SectionHead, Spinner, ErrorState } from '../components/ui';
 import { socialLink } from '../links';
+import { Modal } from './dashboard/dash';
 
 const TABS = [
   { key: 'all', label: 'All' },
@@ -30,7 +31,12 @@ const CAT_ICON = {
   other: <Icon.grid size={16} />,
 };
 
-function ItemCard({ title, price, availability, description, linkUrl, footerNote, icon }) {
+function CoinBadge({ coins }) {
+  if (!coins || coins <= 0) return null;
+  return <Badge tone="blue">🪙 {coins} coins</Badge>;
+}
+
+function ItemCard({ title, price, availability, description, linkUrl, footerNote, icon, coinCost, redeemable, onRedeem, redeeming }) {
   const avail = AVAIL_LABEL[availability] || availability || '—';
   const tone = AVAIL_TONE[availability] || 'gray';
   return (
@@ -47,7 +53,11 @@ function ItemCard({ title, price, availability, description, linkUrl, footerNote
       {description && <p className="text-sm muted" style={{ margin: 0, lineHeight: 1.65 }}>{description}</p>}
       <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
         <span className="text-sm" style={{ fontWeight: 700 }}>{price || 'Ask price'}</span>
-        {linkUrl ? (
+        {coinCost > 0 && redeemable ? (
+          <button className="btn btn-blue btn-sm" onClick={() => onRedeem()} disabled={redeeming} title="Coins se redeem karein">
+            🪙 Redeem ({coinCost}) {redeeming && '…'}
+          </button>
+        ) : linkUrl ? (
           <a className="btn btn-blue btn-sm" href={linkUrl} target="_blank" rel="noopener noreferrer">
             Open link <Icon.arrow size={13} />
           </a>
@@ -59,7 +69,12 @@ function ItemCard({ title, price, availability, description, linkUrl, footerNote
   );
 }
 
-function RewardCard({ r }) {
+function RewardCard({ r, redeemable, onRedeem, redeeming }) {
+  const redeemBtn = redeemable && (r.coin_cost || 0) > 0 && ['available', 'limited'].includes(r.availability) ? (
+    <button className="btn btn-blue btn-sm" onClick={() => onRedeem()} disabled={redeeming}>
+      🪙 Redeem ({r.coin_cost}) {redeeming && '…'}
+    </button>
+  ) : null;
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
@@ -73,15 +88,20 @@ function RewardCard({ r }) {
       </div>
       <p className="text-sm muted" style={{ margin: 0, lineHeight: 1.65 }}>
         {r.code_hint
-          ? `Giveaway reward (${r.edition === 'bedrock' ? 'Bedrock' : 'Java'} edition). Code encrypted hai — section flows complete hone ke baad hi deliver hota hai.`
-          : `Giveaway reward (${r.edition === 'bedrock' ? 'Bedrock' : 'Java'} edition). Verify hone ke baad deliver hota hai.`}
+          ? `Giveaway reward (${r.edition === 'bedrock' ? 'Bedrock' : 'Java'} edition). Code encrypted hai — redeem approve hone ke baad wallet mein aayega.`
+          : `Giveaway reward (${r.edition === 'bedrock' ? 'Bedrock' : 'Java'} edition). Owner approve kare ga phir deliver hota hai.`}
       </p>
       {r.notes && <p className="text-xs muted3" style={{ margin: 0 }}>{r.notes}</p>}
-      <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
         <span className="text-sm" style={{ fontWeight: 700 }}>{r.price || 'Giveaway'}</span>
-        <a className="btn btn-ghost btn-sm" href="/about" style={{ textDecoration: 'none' }}>
-          How it works <Icon.arrow size={13} />
-        </a>
+        <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {redeemBtn}
+          {!redeemBtn && (
+            <a className="btn btn-ghost btn-sm" href="/about" style={{ textDecoration: 'none' }}>
+              How it works <Icon.arrow size={13} />
+            </a>
+          )}
+        </span>
       </div>
     </div>
   );
@@ -138,6 +158,58 @@ export default function Shop() {
   const raw = params.get('tab') || 'all';
   const active = TABS.some((t) => t.key === raw) ? raw : 'all';
   const [state, setState] = useState({ loading: true, data: null, error: null });
+  const [wallet, setWallet] = useState({ loading: true, data: null, signedIn: null, error: null });
+  const [showRequests, setShowRequests] = useState(false);
+  const [redeemingId, setRedeemingId] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  async function loadWallet() {
+    setWallet((w) => ({ ...w, loading: true }));
+    try {
+      setWallet({ loading: false, data: await publicApi.pointsMe(), signedIn: true, error: null });
+    } catch (e) {
+      setWallet({
+        loading: false,
+        data: null,
+        signedIn: e.status === 401 ? false : null,
+        error: e.status === 401 ? null : (e.message || 'Wallet load nahi hua.'),
+      });
+    }
+  }
+
+  async function doCheckin() {
+    try {
+      const r = await publicApi.checkin();
+      setToast(`🎉 +${r.earned} coins! Streak: ${r.streak} din${r.streak >= 3 ? ' 🔥' : ''}`);
+      setTimeout(() => setToast(null), 3500);
+      await loadWallet();
+    } catch (e) {
+      setToast(e.message || 'Check-in fail hua.');
+      setTimeout(() => setToast(null), 3000);
+      await loadWallet();
+    }
+  }
+
+  async function redeem(source, id) {
+    setRedeemingId(`${source}:${id}`);
+    try {
+      const r = await publicApi.redeem(source, id);
+      setToast(`✅ "${r.title}" redeem ho gaya (${r.cost} coins) — approval ka intezar karein.`);
+      setTimeout(() => setToast(null), 4000);
+      await loadWallet();
+    } catch (e) {
+      setToast(e.message || 'Redeem fail hua.');
+      setTimeout(() => setToast(null), 3500);
+      await loadWallet();
+    } finally {
+      setRedeemingId(null);
+    }
+  }
+
+  useEffect(() => {
+    load();
+    loadWallet();
+  }, []);
 
   async function load() {
     setState({ loading: true, data: null, error: null });
@@ -147,10 +219,6 @@ export default function Shop() {
       setState({ loading: false, data: null, error: 'Shop abhi load nahi ho saka — thori dair baad try karein.' });
     }
   }
-
-  useEffect(() => {
-    load();
-  }, []);
 
   function switchTab(key) {
     setParams(key === 'all' ? {} : { tab: key }, { replace: true });
@@ -184,6 +252,60 @@ export default function Shop() {
         }
       />
 
+      {/* -------------------------- Coins wallet -------------------------- */}
+      <div className="card" style={{ marginTop: 18, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+        <span className="resource-logo fallback" style={{ width: 40, height: 40, fontSize: 18, display: 'inline-grid', flexShrink: 0 }}>
+          🪙
+        </span>
+        {wallet.loading && <Spinner label="Wallet load ho raha…" />}
+        {!wallet.loading && wallet.signedIn === false && (
+          <>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>Coins system</div>
+              <div className="text-xs muted3">Roz check-in karke coins kamayein aur shop items redeem karein.</div>
+            </div>
+            <span style={{ marginLeft: 'auto' }}>
+              <Link to="/ai" className="btn btn-blue btn-sm" style={{ textDecoration: 'none' }}>
+                Sign in karein <Icon.arrow size={13} />
+              </Link>
+            </span>
+          </>
+        )}
+        {!wallet.loading && wallet.error && (
+          <div className="text-sm muted" style={{ minWidth: 0 }}>⚠ {wallet.error}</div>
+        )}
+        {!wallet.loading && wallet.signedIn && wallet.data && (
+          <>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>
+                {wallet.data.points} coins
+                {wallet.data.streak > 0 && (
+                  <span className="text-sm muted3" style={{ fontWeight: 500 }}> · 🔥 {wallet.data.streak}-day streak</span>
+                )}
+              </div>
+              <div className="text-xs muted3">
+                {wallet.data.checkedInToday
+                  ? 'Aaj ka check-in ho gaya — kal phir aayein.'
+                  : 'Aaj ka check-in available hai!'}
+              </div>
+            </div>
+            <span style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button className="btn btn-blue btn-sm" onClick={doCheckin} disabled={wallet.data.checkedInToday}>
+                {wallet.data.checkedInToday ? '✓ Checked in' : '🎁 Daily check-in (+coins)'}
+              </button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowRequests(true)}>
+                <Icon.list size={14} /> My redemptions
+              </button>
+            </span>
+          </>
+        )}
+      </div>
+      {toast && (
+        <div className="alert alert-success mt-2" role="status" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Icon.check size={15} /> {toast}
+        </div>
+      )}
+
       <div className="tabs" role="tablist" aria-label="Shop categories" style={{ marginTop: 24 }}>
         {TABS.map((t) => (
           <button
@@ -209,7 +331,15 @@ export default function Shop() {
                 <div className="eyebrow" style={{ marginBottom: 10 }}><Icon.star size={13} style={{ verticalAlign: -2 }} /> Awards & Rewards</div>
                 {rewards.length ? (
                   <div className="grid-cards">
-                    {rewards.map((r, i) => <RewardCard key={`r${i}`} r={r} />)}
+                    {rewards.map((r, i) => (
+                      <RewardCard
+                        key={`r${i}`}
+                        r={r}
+                        redeemable={!!wallet.signedIn}
+                        onRedeem={() => redeem('reward', r.id)}
+                        redeeming={redeemingId === `reward:${r.id}`}
+                      />
+                    ))}
                   </div>
                 ) : (
                   <EmptyState
@@ -236,6 +366,10 @@ export default function Shop() {
                         linkUrl={it.link_url}
                         icon={CAT_ICON.promo}
                         footerNote="Code deliver hone ke liye Discord par rabta karein"
+                        coinCost={it.coin_cost}
+                        redeemable={!!wallet.signedIn}
+                        onRedeem={() => redeem('shop', it.id)}
+                        redeeming={redeemingId === `shop:${it.id}`}
                       />
                     ))}
                   </div>
@@ -264,6 +398,10 @@ export default function Shop() {
                         linkUrl={it.link_url}
                         icon={CAT_ICON.giftcard}
                         footerNote="Gift card safest delivery — Discord verification ke sath"
+                        coinCost={it.coin_cost}
+                        redeemable={!!wallet.signedIn}
+                        onRedeem={() => redeem('shop', it.id)}
+                        redeeming={redeemingId === `shop:${it.id}`}
                       />
                     ))}
                   </div>
@@ -345,6 +483,10 @@ export default function Shop() {
                         linkUrl={it.link_url}
                         icon={CAT_ICON.other}
                         footerNote="Order — Discord par contact karein"
+                        coinCost={it.coin_cost}
+                        redeemable={!!wallet.signedIn}
+                        onRedeem={() => redeem('shop', it.id)}
+                        redeeming={redeemingId === `shop:${it.id}`}
                       />
                     ))}
                   </div>
@@ -371,6 +513,33 @@ export default function Shop() {
           </>
         )}
       </div>
+
+      {showRequests && (
+        <Modal title="My redemptions" onClose={() => setShowRequests(false)} footer={
+          <button className="btn btn-ghost btn-sm" onClick={() => setShowRequests(false)}>Close</button>
+        }>
+          {(wallet.data?.requests || []).length === 0 && (
+            <p className="text-sm muted">Abhi koi redeem request nahi. Shop se koi item coins se redeem karein — request yahan status ke sath dikhegi.</p>
+          )}
+          {(wallet.data?.requests || []).map((r) => (
+            <div key={r.id} style={{ borderTop: '1px solid var(--border)', padding: '10px 0', display: 'flex', gap: 10, alignItems: 'flex-start', justifyContent: 'space-between' }}>
+              <div style={{ minWidth: 0 }}>
+                <div className="text-sm" style={{ fontWeight: 600 }}>{r.title}</div>
+                <div className="text-xs muted3">{r.cost} coins · {new Date(r.createdAt).toLocaleString()}</div>
+                {r.note && <div className="text-xs muted" style={{ marginTop: 4 }}>Owner note: {r.note}</div>}
+                {r.code && (
+                  <div className="text-xs" style={{ marginTop: 6, fontFamily: 'var(--mono)', wordBreak: 'break-all' }}>
+                    🎁 Code: {r.code}
+                  </div>
+                )}
+              </div>
+              <Badge tone={r.status === 'approved' ? 'green' : r.status === 'rejected' ? 'red' : 'amber'}>
+                {r.status === 'approved' ? 'Approved' : r.status === 'rejected' ? 'Rejected' : 'Pending'}
+              </Badge>
+            </div>
+          ))}
+        </Modal>
+      )}
     </div>
   );
 }

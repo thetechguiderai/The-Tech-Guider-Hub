@@ -32,6 +32,10 @@ export const publicApi = {
     request(`/api/public/resources/${id}/click`, { method: 'POST', body: '{}' }),
   minecraft: () => request('/api/public/minecraft'),
   shop: () => request('/api/public/shop'),
+  // --- Coins (daily check-in + redeem; identity = AI workspace account) ---
+  pointsMe: () => request('/api/points/me'),
+  checkin: () => request('/api/points/checkin', { method: 'POST', body: '{}' }),
+  redeem: (source, id) => request('/api/points/redeem', { method: 'POST', body: JSON.stringify({ source, id }) }),
   youtubeStats: () => request('/api/public/youtube-stats'),
   announcements: () => request('/api/public/announcements'),
   search: (q) => request(`/api/public/search?q=${encodeURIComponent(q)}`),
@@ -94,6 +98,10 @@ export const ownerApi = {
   createShopItem: (body) => request('/api/owner/shop-items', { method: 'POST', body: JSON.stringify(body) }),
   updateShopItem: (id, body) => request(`/api/owner/shop-items/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteShopItem: (id) => request(`/api/owner/shop-items/${id}`, { method: 'DELETE' }),
+
+  coinRequests: () => request('/api/owner/coins/requests'),
+  decideCoinRequest: (id, action, note) =>
+    request(`/api/owner/coins/${id}/decide`, { method: 'POST', body: JSON.stringify({ action, note }) }),
 
   announcements: () => request('/api/owner/announcements'),
   createAnnouncement: (body) => request('/api/owner/announcements', { method: 'POST', body: JSON.stringify(body) }),
