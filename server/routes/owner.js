@@ -529,6 +529,70 @@ router.delete('/rewards/:id', requireOwner, (req, res) => {
   res.json({ ok: true });
 });
 
+// -------------------------------- shop items --------------------------------
+const SHOP_CATEGORIES = ['reward', 'promo', 'giftcard', 'service', 'other'];
+const SHOP_AVAILABILITY = ['available', 'coming_soon', 'sold_out'];
+
+function shopBody(b) {
+  return {
+    category: SHOP_CATEGORIES.includes(b.category) ? b.category : 'other',
+    title: String(b.title || '').trim(),
+    description: String(b.description || '').trim(),
+    price: String(b.price || '').trim(),
+    availability: SHOP_AVAILABILITY.includes(b.availability) ? b.availability : 'available',
+    link_url: String(b.link_url || '').trim(),
+    sort_order: Number.isFinite(Number(b.sort_order)) ? Number(b.sort_order) : 0,
+  };
+}
+
+router.get('/shop-items', requireOwner, (req, res) => {
+  const rows = db.prepare('SELECT * FROM shop_items ORDER BY sort_order ASC, created_at DESC').all();
+  res.json({ items: rows });
+});
+
+router.post('/shop-items', requireOwner, (req, res) => {
+  const item = shopBody(req.body || {});
+  if (!item.title) return res.status(400).json({ error: 'Title is required.' });
+  const info = db.prepare(
+    `INSERT INTO shop_items (category, title, description, price, availability, link_url, sort_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(item.category, item.title, item.description, item.price, item.availability, item.link_url, item.sort_order);
+  audit('shop_item_created', { target: `shop:${info.lastInsertRowid}`, result: 'success', detail: item.title.slice(0, 60), ip: ownerIp(req) });
+  res.status(201).json({ id: Number(info.lastInsertRowid) });
+});
+
+router.put('/shop-items/:id', requireOwner, (req, res) => {
+  const id = Number(req.params.id);
+  const row = db.prepare('SELECT * FROM shop_items WHERE id = ?').get(id);
+  if (!row) return res.status(404).json({ error: 'Shop item not found' });
+  const b = req.body || {};
+  const merged = shopBody({
+    category: b.category ?? row.category,
+    title: b.title ?? row.title,
+    description: b.description ?? row.description,
+    price: b.price ?? row.price,
+    availability: b.availability ?? row.availability,
+    link_url: b.link_url ?? row.link_url,
+    sort_order: b.sort_order ?? row.sort_order,
+  });
+  if (!merged.title) return res.status(400).json({ error: 'Title is required.' });
+  db.prepare(
+    `UPDATE shop_items SET category = ?, title = ?, description = ?, price = ?, availability = ?,
+       link_url = ?, sort_order = ?, updated_at = ? WHERE id = ?`
+  ).run(merged.category, merged.title, merged.description, merged.price, merged.availability, merged.link_url, merged.sort_order, now(), id);
+  audit('shop_item_updated', { target: `shop:${id}`, result: 'success', detail: merged.title.slice(0, 60), ip: ownerIp(req) });
+  res.json({ ok: true });
+});
+
+router.delete('/shop-items/:id', requireOwner, (req, res) => {
+  const id = Number(req.params.id);
+  const row = db.prepare('SELECT * FROM shop_items WHERE id = ?').get(id);
+  if (!row) return res.status(404).json({ error: 'Shop item not found' });
+  db.prepare('DELETE FROM shop_items WHERE id = ?').run(id);
+  audit('shop_item_deleted', { target: `shop:${id}`, result: 'success', detail: row.title.slice(0, 60), ip: ownerIp(req) });
+  res.json({ ok: true });
+});
+
 // ------------------------------ announcements ------------------------------
 router.get('/announcements', requireOwner, (req, res) => {
   const rows = db.prepare('SELECT * FROM announcements ORDER BY created_at DESC').all();

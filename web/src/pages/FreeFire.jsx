@@ -8,22 +8,15 @@ import Sensitivity from './Sensitivity';
 
 const FF_TABS = [
   { key: 'sens', label: 'Sensitivity' },
-  { key: 'sale', label: 'ID Sale & Purchase' },
   { key: 'rank', label: 'Rank Push' },
 ];
 
 const TAB_META = {
   sens: {
-    title: 'Free Fire Skills & Services — The Tech Guider Hub',
-    description: 'Free Fire sensitivity generator plus trusted FF ID sale & purchase and rank push services from The Tech Guider.',
+    title: 'Free Fire Sensitivity — The Tech Guider Hub',
+    description: 'Free Fire sensitivity generator from The Tech Guider — tuned for your device, fine-tune it in the training ground. FF ID trade now lives in the Shop.',
     head: 'Free Fire Sensitivity',
-    sub: 'Generate a sensitivity setup tuned for your device, then fine-tune it in the training ground.',
-  },
-  sale: {
-    title: 'FF ID Sale & Purchase — The Tech Guider Hub',
-    description: 'Buy and sell Free Fire IDs safely through The Tech Guider — verified middleman, safe trades only.',
-    head: 'FF ID Sale & Purchase',
-    sub: 'Buy or sell Free Fire IDs safely. We verify both sides and act as the middleman for high-value deals.',
+    sub: 'Generate a sensitivity setup tuned for your device, then fine-tune it in the training ground. ID sale & purchase ab Shop ke FF ID Trade section mein hai.',
   },
   rank: {
     title: 'FF ID Rank Push — The Tech Guider Hub',
@@ -67,60 +60,6 @@ function Steps({ items }) {
         </li>
       ))}
     </ol>
-  );
-}
-
-function RuleItem({ children }) {
-  return (
-    <li className="flex" style={{ gap: 10, alignItems: 'flex-start', padding: '7px 0', listStyle: 'none' }}>
-      <span style={{ color: 'var(--accent)', marginTop: 2, flexShrink: 0 }}>
-        <Icon.check size={16} />
-      </span>
-      <span className="text-sm text-muted">{children}</span>
-    </li>
-  );
-}
-
-function FfSale({ discord }) {
-  return (
-    <>
-      <div className="grid-cards" style={{ gap: 16 }}>
-        <div className="card" style={{ padding: 26 }}>
-          <h3 className="text-lg font-bold mb-2">
-            <span className="flex align-center gap-2">
-              <Icon.arrow size={16} /> How it works
-            </span>
-          </h3>
-          <Steps
-            items={[
-              'Contact us on Discord with "BUY" or "SELL" in your first message.',
-              'Sellers: send screenshots of the ID (level, max rank, skins, weapons, diamond count) and your asking price. Buyers: tell us your budget and what you need (rank, skins, weapons).',
-              'We verify the account details and connect the buyer with the seller.',
-              'Payment is done through the agreed safe method — for high-value IDs we act as the middleman for both sides.',
-              'The ID is handed over on Discord. Change the email and password immediately after purchase.',
-            ]}
-          />
-        </div>
-        <div className="card" style={{ padding: 26 }}>
-          <h3 className="text-lg font-bold mb-2">
-            <span className="flex align-center gap-2">
-              <Icon.shield size={16} /> Safety rules
-            </span>
-          </h3>
-          <ul style={{ padding: 0, margin: 0 }}>
-            <RuleItem>Never share your password before payment is confirmed.</RuleItem>
-            <RuleItem>Check linked accounts (Facebook, Google, VK) before buying — the ID must be clean.</RuleItem>
-            <RuleItem>Take screenshots of the ID and keep your chat history.</RuleItem>
-            <RuleItem>We never ask for login details outside the verified Discord workflow.</RuleItem>
-            <RuleItem>Report any scam attempt to us — bad actors get blacklisted.</RuleItem>
-          </ul>
-          <p className="text-xs muted3 mt-2" style={{ marginTop: 14 }}>
-            We only mediate deals for the owner's ID(s) and verified listings — no third-party cash apps beyond agreed safe methods.
-          </p>
-        </div>
-      </div>
-      <DiscordCta url={discord} sub="Interested in buying or selling an FF ID? Start the chat on Discord." />
-    </>
   );
 }
 
@@ -222,7 +161,6 @@ export default function FreeFire() {
       </div>
 
       {active === 'sens' && <Sensitivity embedded />}
-      {active === 'sale' && <FfSale discord={discord} />}
       {active === 'rank' && <FfRankPush discord={discord} />}
     </div>
   );

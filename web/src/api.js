@@ -31,6 +31,7 @@ export const publicApi = {
   resourceClick: (id) =>
     request(`/api/public/resources/${id}/click`, { method: 'POST', body: '{}' }),
   minecraft: () => request('/api/public/minecraft'),
+  shop: () => request('/api/public/shop'),
   youtubeStats: () => request('/api/public/youtube-stats'),
   announcements: () => request('/api/public/announcements'),
   search: (q) => request(`/api/public/search?q=${encodeURIComponent(q)}`),
@@ -88,6 +89,11 @@ export const ownerApi = {
   updateReward: (id, body) => request(`/api/owner/rewards/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   revealReward: (id) => request(`/api/owner/rewards/${id}/reveal`, { method: 'POST' }),
   deleteReward: (id) => request(`/api/owner/rewards/${id}`, { method: 'DELETE' }),
+
+  shopItems: () => request('/api/owner/shop-items'),
+  createShopItem: (body) => request('/api/owner/shop-items', { method: 'POST', body: JSON.stringify(body) }),
+  updateShopItem: (id, body) => request(`/api/owner/shop-items/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteShopItem: (id) => request(`/api/owner/shop-items/${id}`, { method: 'DELETE' }),
 
   announcements: () => request('/api/owner/announcements'),
   createAnnouncement: (body) => request('/api/owner/announcements', { method: 'POST', body: JSON.stringify(body) }),

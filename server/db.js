@@ -152,9 +152,22 @@ CREATE TABLE IF NOT EXISTS analytics_events (
   detail TEXT DEFAULT '',
   ip_hash TEXT DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_analytics_type ON analytics_events (event_type, created_at);
+);CREATE INDEX IF NOT EXISTS idx_analytics_type ON analytics_events (event_type, created_at);
 CREATE INDEX IF NOT EXISTS idx_analytics_target ON analytics_events (target);
+
+CREATE TABLE IF NOT EXISTS shop_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  category TEXT NOT NULL DEFAULT 'other',
+  title TEXT NOT NULL,
+  description TEXT DEFAULT '',
+  price TEXT DEFAULT '',
+  availability TEXT NOT NULL DEFAULT 'available',
+  link_url TEXT DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_shop_cat ON shop_items (category, sort_order);
 
 CREATE TABLE IF NOT EXISTS audit_logs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

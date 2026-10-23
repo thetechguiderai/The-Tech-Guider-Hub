@@ -10,15 +10,7 @@ import AIHelper from './AIHelper';
 export const NAV = [
   { to: '/', label: 'Home', icon: 'home' },
   { to: '/videos', label: 'Videos', icon: 'video' },
-  {
-    label: 'Gaming',
-    icon: 'minecraft',
-    children: [
-      { to: '/minecraft', label: 'Minecraft Hub' },
-      { to: '/free-fire-sensitivity', label: 'Free Fire' },
-      { to: '/videos', label: 'Gaming Tutorials' },
-    ],
-  },
+  { to: '/shop', label: 'Shop', icon: 'gift' },
   { to: '/tiktok', label: 'TikTok', icon: 'tiktok' },
   {
     label: 'Tools',
@@ -530,6 +522,7 @@ function Footer() {
           <div className="footer-col">
             <h5>Platform</h5>
             <Link to="/ai">The Tech Guider AI</Link>
+            <Link to="/shop">Shop</Link>
             <Link to="/analytics">Channel Analytics</Link>
             <Link to="/support">Donate &amp; Invest</Link>
             <Link to="/about">About</Link>

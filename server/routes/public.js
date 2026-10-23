@@ -197,6 +197,29 @@ router.get('/minecraft', (req, res) => {
   res.json({ listings: rows });
 });
 
+// ------------------------------- shop ---------------------------------------
+// The shop is 100% owner-managed: nothing on this page is hardcoded or faked.
+// Items come from shop_items; awards come from the real reward_codes inventory
+// (codes themselves are NEVER exposed publicly — only the owner reveals them
+// after the verified giveaway process); Minecraft listings are pulled live
+// from minecraft_listings so the hub's content lives in the shop too.
+router.get('/shop', (req, res) => {
+  const items = db.prepare(
+    `SELECT id, category, title, description, price, availability, link_url
+     FROM shop_items WHERE availability != 'hidden'
+     ORDER BY sort_order ASC, created_at DESC`
+  ).all();
+  const rewards = db.prepare(
+    `SELECT label, code_hint, edition, price, availability, notes
+     FROM reward_codes ORDER BY updated_at DESC LIMIT 60`
+  ).all();
+  const minecraft = db.prepare(
+    `SELECT id, title, edition, listing_type, price, availability, description, url, contact, featured
+     FROM minecraft_listings ORDER BY featured DESC, sort_order ASC, created_at DESC`
+  ).all();
+  res.json({ items, rewards, minecraft });
+});
+
 // ------------------------------- sensitivities ------------------------------
 router.post('/sensitivity/generate', rateLimit, (req, res) => {
   const body = req.body || {};

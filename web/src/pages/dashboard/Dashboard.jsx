@@ -11,6 +11,7 @@ import TikTokAdmin from './TikTokAdmin';
 import SensitivityAdmin from './SensitivityAdmin';
 import MinecraftAdmin from './MinecraftAdmin';
 import RewardsAdmin from './RewardsAdmin';
+import ShopAdmin from './ShopAdmin';
 import AnnouncementsAdmin from './AnnouncementsAdmin';
 import AnalyticsAdmin from './AnalyticsAdmin';
 import AuditAdmin from './AuditAdmin';
@@ -26,6 +27,7 @@ const NAV = [
     { to: '/owner/dashboard/sensitivity', label: 'FF Sensitivity', icon: Icon.tool },
     { to: '/owner/dashboard/minecraft', label: 'Minecraft', icon: Icon.minecraft },
     { to: '/owner/dashboard/rewards', label: 'Rewards', icon: Icon.star },
+    { to: '/owner/dashboard/shop', label: 'Shop', icon: Icon.gift },
   ]},
   { group: 'Monitor', items: [
     { to: '/owner/dashboard/announcements', label: 'Announcements', icon: Icon.alert },
@@ -47,6 +49,7 @@ const PAGE_TITLES = {
   '/owner/dashboard/sensitivity': 'FF Sensitivity Profiles',
   '/owner/dashboard/minecraft': 'Minecraft Management',
   '/owner/dashboard/rewards': 'Reward Inventory',
+  '/owner/dashboard/shop': 'Shop Management',
   '/owner/dashboard/announcements': 'Announcements',
   '/owner/dashboard/analytics': 'Analytics',
   '/owner/dashboard/social': 'Social Links & Branding',
@@ -160,6 +163,7 @@ export default function Dashboard() {
           <Route path="sensitivity" element={<SensitivityAdmin />} />
           <Route path="minecraft" element={<MinecraftAdmin />} />
           <Route path="rewards" element={<RewardsAdmin />} />
+          <Route path="shop" element={<ShopAdmin />} />
           <Route path="announcements" element={<AnnouncementsAdmin />} />
           <Route path="analytics" element={<AnalyticsAdmin />} />
           <Route path="social" element={<SettingsAdmin />} />
