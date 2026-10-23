@@ -165,6 +165,8 @@ function Message({ msg, onCopy, onRetry }) {
               )}
             </div>
           </div>
+        ) : msg.pending ? (
+          <span className="aiw-typing" aria-label="AI is thinking"><i /><i /><i /></span>
         ) : (
           <MessageBody text={msg.content} />
         )}
@@ -492,7 +494,13 @@ export default function AIWorkspace() {
                     Ask about tech, coding, gaming, your hub content or anything else. {user ? 'Your chats are saved.' : 'Sign in to save your chats and unlock more models.'}
                   </p>
                   <div className="aiw-suggests">
-                    {['Explain how to improve Free Fire sensitivity', 'Give me a Minecraft server setup checklist', 'Help me plan a YouTube video'].map((s) => (
+                    {[
+                      'Yahan kya milta hai? (site tour)',
+                      'Free Fire sensitivity kaise set karun?',
+                      'Minecraft server setup checklist do',
+                      'YouTube video ke liye script plan karo',
+                      'HTML/JS code likhne mein madad do',
+                    ].map((s) => (
                       <button key={s} type="button" className="aiw-suggest" onClick={() => send(s)}>{s}</button>
                     ))}
                   </div>

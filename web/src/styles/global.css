@@ -2733,3 +2733,141 @@ p {
 @media (max-width: 720px) {
   .tt-stats-row { gap: 12px; }
 }
+
+/* ============================================================
+   THE TECH GUIDER AI — official Hub integration polish + help
+   widget (Appended Oct 2026). New classes: aih-*, aiw-typing.
+   ============================================================ */
+
+@keyframes aiw-type {
+  0%, 60%, 100% { transform: translateY(0); opacity: .4; }
+  30% { transform: translateY(-3px); opacity: 1; }
+}
+@keyframes aiw-msg-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes aiw-dot-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, .35); }
+  50% { box-shadow: 0 0 0 6px rgba(74, 222, 128, 0); }
+}
+@keyframes aih-pop {
+  from { opacity: 0; transform: translateY(14px) scale(.97); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes aih-glow {
+  0%, 100% { box-shadow: 0 8px 28px rgba(59, 130, 246, .35); }
+  50% { box-shadow: 0 8px 36px rgba(59, 130, 246, .6); }
+}
+
+/* --- typing indicator (workspace + helper) --- */
+.aiw-typing, .aih-typing { display: inline-flex; gap: 5px; padding: 6px 2px; }
+.aiw-typing i, .aih-typing i {
+  width: 7px; height: 7px; border-radius: 999px;
+  background: var(--blue);
+  animation: aiw-type 1.2s infinite ease-in-out;
+}
+.aiw-typing i:nth-child(2), .aih-typing i:nth-child(2) { animation-delay: .15s; }
+.aiw-typing i:nth-child(3), .aih-typing i:nth-child(3) { animation-delay: .3s; }
+
+/* --- workspace chrome: glassy gradient header + animated status dot --- */
+.aiw-head {
+  background: linear-gradient(90deg, rgba(59, 130, 246, .10), rgba(139, 92, 246, .08) 55%, rgba(20, 20, 20, 0));
+  backdrop-filter: blur(8px);
+}
+.aiw-dot { animation: aiw-dot-pulse 2.4s infinite; }
+.aiw-main { background:
+  radial-gradient(1200px 420px at 85% -140px, rgba(59, 130, 246, .07), transparent 60%),
+  radial-gradient(900px 380px at 0% 110%, rgba(139, 92, 246, .05), transparent 60%),
+  var(--bg);
+}
+.aiw-msg { animation: aiw-msg-in .28s ease-out both; }
+.aiw-msg.assistant .aiw-msg-body { background: none; }
+.aiw-empty-icon {
+  background: linear-gradient(135deg, var(--blue-soft), rgba(139, 92, 246, .22)) !important;
+  color: var(--blue) !important;
+  box-shadow: 0 10px 30px rgba(59, 130, 246, .18);
+}
+.aiw-suggest { transition: transform .15s ease, border-color .15s ease, background .15s ease; }
+.aiw-suggest:hover { transform: translateY(-2px); border-color: var(--blue); background: var(--blue-soft); }
+.aiw-composer textarea { border-radius: 16px; transition: border-color .15s ease, box-shadow .15s ease; }
+.aiw-conv.on { box-shadow: inset 2px 0 0 var(--blue); }
+.aiw-side { scrollbar-width: thin; }
+
+/* --- floating hub-help widget --- */
+.aih-fab {
+  position: fixed; right: 22px; bottom: 22px; z-index: 95;
+  display: inline-flex; align-items: center; gap: 9px;
+  background: linear-gradient(135deg, var(--blue), #7c5cff);
+  color: #fff; border: none; cursor: pointer;
+  padding: 13px 18px 13px 15px; border-radius: 999px;
+  font-size: 14px; font-weight: 600; font-family: inherit;
+  animation: aih-glow 3s infinite;
+  transition: transform .15s ease;
+}
+.aih-fab:hover { transform: translateY(-2px) scale(1.03); }
+.aih-panel {
+  position: fixed; right: 22px; bottom: 22px; z-index: 95;
+  width: min(392px, calc(100vw - 28px));
+  height: min(560px, calc(100vh - 96px));
+  display: flex; flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--border-strong, var(--border));
+  border-radius: 18px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .45);
+  animation: aih-pop .22s ease-out both;
+  overflow: hidden;
+}
+.aih-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; color: #fff;
+  background: linear-gradient(135deg, var(--blue), #7c5cff);
+}
+.aih-head-title { display: inline-flex; align-items: center; gap: 9px; font-weight: 600; font-size: 14px; }
+.aih-close { background: rgba(255, 255, 255, .14); border: none; color: #fff; cursor: pointer; border-radius: 8px; padding: 5px; display: grid; place-items: center; }
+.aih-close:hover { background: rgba(255, 255, 255, .28); }
+.aih-msgs { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; scroll-behavior: smooth; background: var(--bg); }
+.aih-welcome-title { font-weight: 700; font-size: 14.5px; margin: 4px 0 6px; }
+.aih-welcome-sub { color: var(--text-3); font-size: 13px; line-height: 1.6; margin: 0 0 10px; }
+.aih-suggests { display: flex; flex-direction: column; gap: 7px; }
+.aih-suggest {
+  text-align: left; background: var(--card); border: 1px solid var(--border);
+  color: var(--text); border-radius: 12px; padding: 9px 12px; font-size: 12.5px;
+  cursor: pointer; font-family: inherit;
+}
+.aih-suggest:hover { border-color: var(--blue); background: var(--blue-soft); }
+.aih-msg { display: flex; animation: aiw-msg-in .25s ease-out both; }
+.aih-msg.user { justify-content: flex-end; }
+.aih-bubble {
+  max-width: 86%; padding: 9px 12px; border-radius: 14px;
+  font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; word-wrap: break-word;
+}
+.aih-msg.user .aih-bubble {
+  background: linear-gradient(135deg, var(--blue), #7c5cff); color: #fff;
+  border-bottom-right-radius: 5px;
+}
+.aih-msg.assistant .aih-bubble {
+  background: var(--card); border: 1px solid var(--border); color: var(--text);
+  border-bottom-left-radius: 5px;
+}
+.aih-msg.assistant .aih-bubble .aih-text { color: var(--text-2, inherit); }
+.aih-composer { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--border); background: var(--card); }
+.aih-composer input {
+  flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+  color: var(--text); padding: 10px 12px; font-size: 13.5px; font-family: inherit;
+}
+.aih-composer input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-soft); }
+.aih-send {
+  flex: 0 0 auto; width: 40px; border: none; cursor: pointer; border-radius: 12px;
+  display: grid; place-items: center; color: #fff;
+  background: linear-gradient(135deg, var(--blue), #7c5cff);
+}
+.aih-send:disabled { opacity: .45; cursor: default; }
+.aih-foot { padding: 7px 12px; border-top: 1px solid var(--border); background: var(--card); font-size: 11px; color: var(--muted3, var(--text-3)); display: flex; gap: 6px; align-items: center; }
+.aih-foot a { color: var(--blue); text-decoration: none; font-weight: 600; }
+
+@media (max-width: 640px) {
+  .aih-fab { right: 14px; bottom: 14px; padding: 12px 16px 12px 13px; }
+  .aih-fab-label { display: none; }
+  .aih-panel { right: 10px; bottom: 10px; width: calc(100vw - 20px); height: min(560px, calc(100vh - 80px)); }
+}

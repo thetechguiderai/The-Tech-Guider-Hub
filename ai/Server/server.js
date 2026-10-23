@@ -149,13 +149,13 @@ for (const statement of [
 try { db.exec("CREATE UNIQUE INDEX IF NOT EXISTS users_oauth_identity ON users(oauth_provider, oauth_subject)"); } catch { /* Existing data can be repaired by an admin. */ }
 
 // ---------- MODELS (Guider catalog) ----------
-const VALID_OPENROUTER_FREE_MODEL = "meta-llama/llama-3.1-8b-instruct";
+const VALID_OPENROUTER_FREE_MODEL = "recursive/flint-v1.0:free";
 const MODELS = {
   "guider-flash":   { name: "Guider Flash",    tier: "free",  provider: "openrouter", model: VALID_OPENROUTER_FREE_MODEL, dailyLimit: 30, desc: "Fast everyday AI chat, normal questions, general assistance." },
   "guider-pro":      { name: "Guider Pro",      tier: "paid",  provider: "anthropic",  model: "claude-sonnet-4-6", dailyLimit: 0, desc: "Advanced chatting, coding, image generation. Unlimited usage." },
   "guider-go":       { name: "Guider Go",       tier: "paid",  provider: "openai",     model: "gpt-4.1", dailyLimit: 0, desc: "Coding, programming aur complete projects." },
-  "guider-plus":     { name: "Guider Plus",     tier: "free",  provider: "google",     model: "gemini-1.5-flash", dailyLimit: 15, desc: "Web/resource finding, content research, logo/banner/design, social-media assistance." },
-  "guider-plus-max": { name: "Guider Plus Max", tier: "paid",  provider: "google",     model: "gemini-1.5-pro", dailyLimit: 0, desc: "Heavy projects aur advanced Plus tasks." },
+  "guider-plus":     { name: "Guider Plus",     tier: "free",  provider: "google",     model: "gemini-3.6-flash", dailyLimit: 15, desc: "Web/resource finding, content research, logo/banner/design, social-media assistance." },
+  "guider-plus-max": { name: "Guider Plus Max", tier: "paid",  provider: "google",     model: "gemini-pro-latest", dailyLimit: 0, desc: "Heavy projects aur advanced Plus tasks." },
   "guider-offline":  { name: "Guider Offline",  tier: "guest", provider: "openrouter", model: VALID_OPENROUTER_FREE_MODEL, dailyLimit: 5, desc: "Limited AI functionality without full account access." },
   "guider-fast":     { name: "Guider Fast",     tier: "free",  provider: "openrouter", model: VALID_OPENROUTER_FREE_MODEL, dailyLimit: 30, desc: "Very fast everyday tasks." },
   "guider-gpt":      { name: "Guider GPT",      tier: "paid",  provider: "openai",     model: "gpt-4o", dailyLimit: 0, desc: "Premium all-rounder model for advanced general-purpose work." },
@@ -419,7 +419,38 @@ const chatSchema = z.object({
   message: z.string().trim().min(1, "Message is required.").max(100000),
   modelId: z.string().trim().max(60).optional(),
   conversationId: z.string().trim().max(60).optional(),
+  mode: z.enum(["hub-help"]).optional(),
 });
+
+// System prompt for on-site help. The helper widget uses this so answers stay
+// grounded in what the Hub actually contains instead of inventing pages.
+const HUB_HELP_SYSTEM = [
+  "You are The Tech Guider AI's on-site hub-help assistant inside The Tech Guider Hub website.",
+  "Help users understand and navigate the Hub: pages, features, tools, AI models, plans and payments.",
+  "Answer in the same language the user used (English, Urdu or Roman Urdu). Keep replies short and practical.",
+  "When a page is relevant, give its exact path as a clickable markdown link using the site domain aware paths shown below.",
+  "If something is not part of the Hub, do not invent it; write a short honest reply and steer back to the Hub.",
+  "",
+  "Hub map (paths are real):",
+  "- Home: / (channel highlights, AI assistant section)",
+  "- Videos: /videos (all YouTube tutorials, category browsing)",
+  "- Gaming: /minecraft (Minecraft Hub), /free-fire-sensitivity (Free Fire sensitivity generator), /videos (gaming tutorials)",
+  "- TikTok page with official embeds: /tiktok",
+  "- Tools: /tools (all tools), Free Fire generator, Tech Guider AI workspace",
+  "- Services: /video-editing-packages (video editing), /logo-packages (logo design), /website-packages (website development), /games-packages (games)",
+  "- Resources: /resources (downloadable resources with search)",
+  "- Tech Guider AI workspace: /ai, chat history at /ai/chat/<id>, plans at /ai/plans",
+  "- Community: /about, /team",
+  "- Free search: press / (slash) anywhere to open the Hub search modal.",
+  "",
+  "AI models inside the Hub: Guider Flash (free, 30/day), Guider Fast (free), Guider Offline (guests, 5/day, no account),",
+  "Guider Plus (Plus plan, Gemini-powered), Guider Plus Max (Content plan), Guider Pro (Pro plan, advanced + image generation),",
+  "Guider GPT / Guider Go (Business plan). Plans are PKR-priced and reachable at /ai/plans.",
+  "Payments: manual review — user sends money (e.g. JazzCash / bank transfer), enters the transaction reference at checkout,",
+  "and the owner approves it in the owner dashboard; the plan unlocks after approval.",
+  "The owner panel lives at /owner (10-digit access code).",
+  "Never ask for passwords, card numbers or OTPs. Point users to the official YouTube channel for video content.",
+].join("\n");
 const imageSchema = z.object({
   prompt: z.string().trim().min(1, "Prompt is required.").max(4000),
 });
@@ -1037,13 +1068,41 @@ async function callProvider(provider, model, messages) {
   if (provider === "google") {
     const key = process.env.GOOGLE_API_KEY;
     if (!key) throw { config: true, provider };
-    const genAI = new GoogleGenerativeAI(key);
-    const generativeModel = genAI.getGenerativeModel({ model });
-    const contents = messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
+    // Gemini expects the system prompt in a dedicated top-level field. Passing
+    // it as a chat turn makes recent Gemini 3.x models hang, so it is split out.
+    const system = messages.filter((m) => m.role === "system").map((m) => m.content).join("\n\n").trim();
+    const contents = messages
+      .filter((m) => m.role !== "system")
+      .map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
     try {
-      const result = await generativeModel.generateContent({ contents });
-      const text = result.response.text();
-      if (!text || !text.trim()) throw { empty: true, provider };
+      // Direct REST call instead of the SDK: faster, fewer moving parts, and
+      // works with both legacy (AIza...) and new (AQ...) API key formats.
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 45000);
+      let payload;
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+            body: JSON.stringify(system ? { contents, systemInstruction: { parts: [{ text: system }] } } : { contents }),
+            signal: controller.signal,
+          }
+        );
+        payload = await res.json();
+      } finally {
+        clearTimeout(timer);
+      }
+      if (payload.error) {
+        throw new Error(payload.error.message || "google request failed.");
+      }
+      const text = (payload.candidates?.[0]?.content?.parts || [])
+        .map((p) => p.text)
+        .filter(Boolean)
+        .join("")
+        .trim();
+      if (!text) throw { empty: true, provider };
       return text;
     } catch (error) {
       throw { config: false, detail: sdkErrorDetail(error, "google request failed."), provider };
@@ -1080,7 +1139,8 @@ app.post("/api/owner/assistant", requireOwner, async (req, res) => {
 app.post("/api/chat", async (req, res) => {
   const parsed = validate(chatSchema, req.body);
   if (parsed.error) return res.status(400).json({ error: parsed.error });
-  const { message, modelId = "guider-flash", conversationId } = parsed.data;
+  const { message, modelId = "guider-flash", conversationId, mode } = parsed.data;
+  const hubHelp = mode === "hub-help";
 
   const model = modelConfig(modelId);
   if (!model) return res.status(400).json({ error: "Unknown model selected." });
@@ -1104,10 +1164,11 @@ app.post("/api/chat", async (req, res) => {
   const limit = checkLimit(usageKey, modelId);
   if (!limit.allowed) return res.status(429).json({ error: limit.reason });
 
-  // Conversation history (logged-in users only)
+  // Conversation history (logged-in users only; hub-help chats stay ephemeral
+  // so quick helper questions never clutter saved conversations)
   let conv = null;
   let history = [];
-  if (user) {
+  if (user && !hubHelp) {
     if (conversationId) conv = db.prepare("SELECT * FROM conversations WHERE id = ? AND user_id = ?").get(conversationId, user.id);
     if (!conv) {
       const cid = nanoid();
@@ -1120,7 +1181,7 @@ app.post("/api/chat", async (req, res) => {
 
   try {
     const reply = await callProvider(model.provider, model.model, [
-      { role: "system", content: "You are The Tech Guider AI, a helpful assistant." },
+      { role: "system", content: hubHelp ? HUB_HELP_SYSTEM : "You are The Tech Guider AI, a helpful assistant." },
       ...history,
       { role: "user", content: message },
     ]);
@@ -1131,7 +1192,7 @@ app.post("/api/chat", async (req, res) => {
       db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
     }
 
-    res.json({ reply, remaining: limit.remaining, conversationId: conv?.id || null });
+    res.json({ reply, remaining: limit.remaining, conversationId: hubHelp ? null : (conv?.id || null) });
   } catch (err) {
     logRequest(user ? user.id : null, modelId, "error");
     const failure = classifyProviderError(err, model);

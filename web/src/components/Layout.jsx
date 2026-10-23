@@ -4,6 +4,7 @@ import { publicApi } from '../api';
 import { useSite } from '../context';
 import { Icon, Spinner } from './ui';
 import { SITE_LINKS, socialLink, SUBSCRIBE_URL } from '../links';
+import AIHelper from './AIHelper';
 
 // Primary navigation. Items with `children` render a flyout (grouped).
 export const NAV = [
@@ -25,9 +26,9 @@ export const NAV = [
     children: [
       { to: '/tools', label: 'All Tools' },
       { to: '/free-fire-sensitivity', label: 'Sensitivity Generator' },
-      { to: '/ai', label: 'Tech Guider AI' },
     ],
   },
+  { to: '/ai', label: 'Tech Guider AI', icon: 'ai' },
   {
     label: 'Services',
     icon: 'star',
@@ -623,6 +624,7 @@ export default function Layout({ children }) {
         </div>
       </div>
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <AIHelper />
     </div>
   );
 }
