@@ -15,6 +15,8 @@ import TikTok from './pages/TikTok';
 import VideoEditingPackages from './pages/VideoEditingPackages';
 import AIWorkspace from './pages/ai/AIWorkspace';
 import AIPlans from './pages/ai/AIPlans';
+import Analytics from './pages/Analytics';
+import Support from './pages/Support';
 import About from './pages/About';
 import WebsitePackages from './pages/WebsitePackages';
 import GamesPackages from './pages/GamesPackages';
@@ -67,6 +69,8 @@ export default function App() {
         <Route path="/ai" element={<Layout><AIWorkspace /></Layout>} />
         <Route path="/ai/chat/:conversationId" element={<Layout><AIWorkspace /></Layout>} />
         <Route path="/ai/plans" element={<Layout><AIPlans /></Layout>} />
+        <Route path="/analytics" element={<Layout><Analytics /></Layout>} />
+        <Route path="/support" element={<Layout><Support /></Layout>} />
         <Route path="/about" element={<Layout><About /></Layout>} />
         <Route path="/website-packages" element={<Layout><WebsitePackages /></Layout>} />
         <Route path="/games-packages" element={<Layout><GamesPackages /></Layout>} />

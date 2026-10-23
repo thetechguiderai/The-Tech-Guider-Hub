@@ -58,6 +58,7 @@ export const Icon = {
   eye: (p) => <Svg {...p}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></Svg>,
   star: (p) => <Svg {...p}><path d="m12 3 2.7 5.6 6.3.8-4.6 4.2 1.2 6.1L12 16.9 6.4 19.7l1.2-6.1L3 9.4l6.3-.8z" /></Svg>,
   grid: (p) => <Svg {...p}><rect x="4" y="4" width="7" height="7" rx="1.5" /><rect x="13" y="4" width="7" height="7" rx="1.5" /><rect x="4" y="13" width="7" height="7" rx="1.5" /><rect x="13" y="13" width="7" height="7" rx="1.5" /></Svg>,
+  gift: (p) => <Svg {...p}><rect x="3" y="9" width="18" height="12" rx="2" /><path d="M3 9h18M12 9v12" /><path d="M12 9c-1.5-.5-5.5-1-5.5-3.2C6.5 4.3 8 3 9.7 3.4 11.5 3.8 12 7 12 9z" /><path d="M12 9c1.5-.5 5.5-1 5.5-3.2C17.5 4.3 16 3 14.3 3.4 12.5 3.8 12 7 12 9z" /></Svg>,
 };
 
 /* ---------------- shared components ---------------- */

@@ -349,6 +349,46 @@ function fetchFromTikTok() {
   return inFlight;
 }
 
+// --------------------------- public profile scrape ---------------------------
+// TikTok's Display API needs a developer app, but the public profile page
+// embeds a rehydration JSON with the user's own published stats. We read ONLY
+// that self-reported public data, clearly labelled `public_profile` in the UI.
+// When TikTok blocks or reshapes the markup this simply returns null and the
+// payload stays honest (`unavailable`) — nothing is fabricated.
+async function scrapePublicProfile(profileUrl) {
+  try {
+    const res = await fetch(profileUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    const m = html.match(/<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__"[^>]*>(\{[\s\S]*?\})<\/script>/);
+    if (!m) return null;
+    const data = safeParse(m[1]);
+    const detail = data && data.__DEFAULT_SCOPE__ && data.__DEFAULT_SCOPE__['webapp.user-detail'];
+    const user = detail && detail.userInfo && detail.userInfo.user;
+    if (!user || user.privateAccount) return null;
+    const stats = (detail.userInfo && detail.userInfo.stats) || {};
+    return {
+      displayName: user.nickname || user.uniqueId || '',
+      avatar: user.avatarLarger || user.avatarMedium || '',
+      verified: Boolean(user.verified),
+      followers: typeof stats.followerCount === 'number' ? stats.followerCount : null,
+      following: typeof stats.followingCount === 'number' ? stats.followingCount : null,
+      likes: typeof stats.heartCount === 'number' ? stats.heartCount : null,
+      videoCount: typeof stats.videoCount === 'number' ? stats.videoCount : null,
+      source: 'public_profile',
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function buildPayload() {
   const s = getSettings();
   const connected = getConnectedPublic();
@@ -380,9 +420,13 @@ async function buildPayload() {
   const curated = curatedVideos();
   const videos = apiVideos.length ? apiVideos : curated;
   const owner = s.ownerProfile || {};
+
+  // Keyless fallback: read the public profile page the way any visitor's
+  // browser does. Real numbers, labelled `public_profile`, nullable on failure.
+  const scraped = !profile ? await scrapePublicProfile(s.profileUrl) : null;
   const hasOwnerIdentity = !!(owner.displayName || owner.avatarUrl);
   const hasOwnerStats = !!(owner.followers || owner.following || owner.likes || owner.views);
-  const available = !!(profile || videos.length || hasOwnerIdentity);
+  const available = !!(profile || scraped || videos.length || hasOwnerIdentity);
 
   return {
     available,
@@ -398,7 +442,22 @@ async function buildPayload() {
           openId: profile.open_id || '',
           statsSource: 'official_api',
         }
-      : {
+      : scraped
+        ? {
+            displayName: scraped.displayName,
+            handle: s.handle,
+            avatar: scraped.avatar,
+            profileUrl: s.profileUrl,
+            verified: scraped.verified,
+            statsSource: 'public_profile',
+            stats: {
+              followers: scraped.followers,
+              following: scraped.following,
+              likes: scraped.likes,
+              videoCount: scraped.videoCount,
+            },
+          }
+        : {
           handle: s.handle,
           profileUrl: s.profileUrl,
           // Owner-reported identity + stats (the hub is created and run by the
@@ -450,4 +509,5 @@ module.exports = {
   curatedVideos,
   fetchFromTikTok,
   resolveProfileUrl,
+  scrapePublicProfile,
 };

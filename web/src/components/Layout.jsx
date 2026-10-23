@@ -40,6 +40,8 @@ export const NAV = [
     ],
   },
   { to: '/resources', label: 'Resources', icon: 'resource' },
+  { to: '/analytics', label: 'Analytics', icon: 'chart' },
+  { to: '/support', label: 'Support', icon: 'gift' },
   { to: '/about', label: 'About', icon: 'profile' },
 ];
 
@@ -528,6 +530,8 @@ function Footer() {
           <div className="footer-col">
             <h5>Platform</h5>
             <Link to="/ai">The Tech Guider AI</Link>
+            <Link to="/analytics">Channel Analytics</Link>
+            <Link to="/support">Donate &amp; Invest</Link>
             <Link to="/about">About</Link>
             <Link to="/owner">Owner Access</Link>
           </div>
