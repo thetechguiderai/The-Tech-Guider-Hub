@@ -20,7 +20,7 @@ export const NAV = [
       { to: '/free-fire-sensitivity', label: 'Sensitivity Generator' },
     ],
   },
-  { to: '/ai', label: 'Tech Guider AI', icon: 'ai' },
+  { to: '/ai', label: 'Hub Helper AI', icon: 'ai' },
   {
     label: 'Services',
     icon: 'star',
@@ -521,7 +521,7 @@ function Footer() {
           </div>
           <div className="footer-col">
             <h5>Platform</h5>
-            <Link to="/ai">The Tech Guider AI</Link>
+            <Link to="/ai">The Tech Guider Hub Helper AI</Link>
             <Link to="/shop">Shop</Link>
             <Link to="/analytics">Channel Analytics</Link>
             <Link to="/support">Donate &amp; Invest</Link>

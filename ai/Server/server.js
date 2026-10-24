@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS conversations (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
   title TEXT DEFAULT 'New Chat',
-  model TEXT DEFAULT 'guider-flash',
+  model TEXT DEFAULT 'guider-astron',
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -147,27 +147,18 @@ for (const statement of [
 }
 try { db.exec("CREATE UNIQUE INDEX IF NOT EXISTS users_oauth_identity ON users(oauth_provider, oauth_subject)"); } catch { /* Existing data can be repaired by an admin. */ }
 
-// ---------- MODELS (Guider catalog) ----------
+// ---------- MODELS (The Tech Guider Hub Helper AI) ----------
+// Single flagship model. tier "guest" now means "open to everyone" — signed-in
+// users and guests share the same helper, limits are enforced per usage key.
 const VALID_OPENROUTER_FREE_MODEL = "recursive/flint-v1.0:free";
 const MODELS = {
-  "guider-flash":   { name: "Guider Flash",    tier: "free",  provider: "openrouter", model: VALID_OPENROUTER_FREE_MODEL, dailyLimit: 30, desc: "Fast everyday AI chat, normal questions, general assistance." },
-  "guider-pro":      { name: "Guider Pro",      tier: "paid",  provider: "anthropic",  model: "claude-sonnet-4-6", dailyLimit: 0, desc: "Advanced chatting, coding, image generation. Unlimited usage." },
-  "guider-go":       { name: "Guider Go",       tier: "paid",  provider: "openai",     model: "gpt-4.1", dailyLimit: 0, desc: "Coding, programming aur complete projects." },
-  "guider-plus":     { name: "Guider Plus",     tier: "free",  provider: "google",     model: "gemini-3.6-flash", dailyLimit: 15, desc: "Web/resource finding, content research, logo/banner/design, social-media assistance." },
-  "guider-plus-max": { name: "Guider Plus Max", tier: "paid",  provider: "google",     model: "gemini-pro-latest", dailyLimit: 0, desc: "Heavy projects aur advanced Plus tasks." },
-  "guider-offline":  { name: "Guider Offline",  tier: "guest", provider: "openrouter", model: VALID_OPENROUTER_FREE_MODEL, dailyLimit: 5, desc: "Limited AI functionality without full account access." },
-  "guider-fast":     { name: "Guider Fast",     tier: "free",  provider: "openrouter", model: VALID_OPENROUTER_FREE_MODEL, dailyLimit: 30, desc: "Very fast everyday tasks." },
-  "guider-gpt":      { name: "Guider GPT",      tier: "paid",  provider: "openai",     model: "gpt-4o", dailyLimit: 0, desc: "Premium all-rounder model for advanced general-purpose work." },
+  "guider-astron": { name: "Guider Astron", tier: "guest", provider: "openrouter", model: VALID_OPENROUTER_FREE_MODEL, dailyLimit: 30, desc: "The Tech Guider Hub Helper AI — chat, Hub navigation, content ideas aur support. Sab ke liye free." },
 };
 
-// ---------- PLANS (PKR pricing) ----------
+// ---------- PLANS (info only — the helper is free; checkout stays closed) ----------
 const plan = (id, name, monthly, yearly, unlocks, desc) => ({ id, name, monthly, yearly, unlocks, desc });
 const PLANS = [
-  plan("free",     "Free",     0,    0,    [],                          "Get started with The Tech Guider AI."),
-  plan("plus",     "Plus",     499,  999,  ["guider-plus"],             "Resource, content, and design assistance."),
-  plan("plus_max", "Content",  999,  1999, ["guider-plus-max"],         "Heavy content and advanced Plus tasks."),
-  plan("pro",      "Pro",      1999, 3999, ["guider-pro"],              "Advanced chat, coding, and image generation."),
-  plan("gpt",      "Business", 2999, 5999, ["guider-gpt", "guider-go"], "Advanced general-purpose and project access."),
+  plan("free", "Free", 0, 0, ["guider-astron"], "Guider Astron — the Hub Helper AI, free for everyone."),
 ];
 for (const [id, model] of Object.entries(MODELS)) {
   db.prepare("INSERT OR IGNORE INTO owner_model_settings (model_id, enabled, tier, daily_limit) VALUES (?, 1, ?, ?)").run(id, model.tier, model.dailyLimit);
@@ -318,7 +309,7 @@ function canUseModel(user, modelId) {
   const model = modelConfig(modelId);
   if (!model?.enabled) return false;
   if (!user) return false;
-  return user.role === "owner" || planUnlocksModel(user.plan, modelId) || (modelId === "guider-gpt" && hasGuiderGptTrial(user));
+  return user.role === "owner" || planUnlocksModel(user.plan, modelId);
 }
 function isConfiguredOwner(user) {
   const email = (process.env.OWNER_EMAIL || "").toLowerCase().trim();
@@ -424,8 +415,8 @@ const chatSchema = z.object({
 // System prompt for on-site help. The helper widget uses this so answers stay
 // grounded in what the Hub actually contains instead of inventing pages.
 const HUB_HELP_SYSTEM = [
-  "You are The Tech Guider AI's on-site hub-help assistant inside The Tech Guider Hub website.",
-  "Help users understand and navigate the Hub: pages, features, tools, AI models, plans and payments.",
+  "You are The Tech Guider Hub Helper AI's on-site hub-help assistant inside The Tech Guider Hub website.",
+  "Help users understand and navigate the Hub: pages, features, tools, the Hub Helper AI, plans and payments.",
   "Answer in the same language the user used (English, Urdu or Roman Urdu). Keep replies short and practical.",
   "When a page is relevant, give its exact path as a clickable markdown link using the site domain aware paths shown below.",
   "If something is not part of the Hub, do not invent it; write a short honest reply and steer back to the Hub.",
@@ -438,13 +429,12 @@ const HUB_HELP_SYSTEM = [
   "- Tools: /tools (all tools), Free Fire generator, Tech Guider AI workspace",
   "- Services: /video-editing-packages (video editing), /logo-packages (logo design), /website-packages (website development), /games-packages (games)",
   "- Resources: /resources (downloadable resources with search)",
-  "- Tech Guider AI workspace: /ai, chat history at /ai/chat/<id>, plans at /ai/plans",
+  "- Hub Helper AI workspace: /ai, chat history at /ai/chat/<id>, plans & usage at /ai/plans",
   "- Community: /about, /team",
   "- Free search: press / (slash) anywhere to open the Hub search modal.",
   "",
-  "AI models inside the Hub: Guider Flash (free, 30/day), Guider Fast (free), Guider Offline (guests, 5/day, no account),",
-  "Guider Plus (Plus plan, Gemini-powered), Guider Plus Max (Content plan), Guider Pro (Pro plan, advanced + image generation),",
-  "Guider GPT / Guider Go (Business plan). Plans are PKR-priced and reachable at /ai/plans.",
+  "AI inside the Hub: The Tech Guider Hub Helper AI (model: Guider Astron) — free for everyone at /ai and in the",
+  "floating help widget; daily limit 30 chats/day, shown with usage at /ai/plans.",
   "Payments: manual review — user sends money (e.g. JazzCash / bank transfer), enters the transaction reference at checkout,",
   "and the owner approves it in the owner dashboard; the plan unlocks after approval.",
   "The owner panel lives at /owner (10-digit access code).",
@@ -566,7 +556,6 @@ app.get("/api/models", (req, res) => {
     let locked = false;
     if (!m.enabled) locked = true;
     if (m.tier === "paid") locked = !canUseModel(user, id);
-    if (m.tier === "guest" && user) locked = true;
     return { id, name: m.name, tier: m.tier, desc: m.desc, locked, enabled: m.enabled, dailyLimit: m.dailyLimit };
   });
   res.json({ models: list });
@@ -1040,7 +1029,7 @@ app.get("/api/owner/assistant/history", requireOwner, (req, res) => {
 app.post("/api/owner/assistant", requireOwner, async (req, res) => {
   const parsed = validate(chatSchema, req.body);
   if (parsed.error) return res.status(400).json({ error: parsed.error });
-  const { message, modelId = "guider-flash" } = parsed.data;
+  const { message, modelId = "guider-astron" } = parsed.data;
   const model = modelConfig(modelId);
   if (!model) return res.status(400).json({ error: "Unknown model selected." });
   const history = db.prepare("SELECT role,content FROM owner_assistant_messages WHERE owner_id=? ORDER BY created_at DESC LIMIT 16").all(req.user.id).reverse();
@@ -1060,7 +1049,7 @@ app.post("/api/owner/assistant", requireOwner, async (req, res) => {
 app.post("/api/chat", async (req, res) => {
   const parsed = validate(chatSchema, req.body);
   if (parsed.error) return res.status(400).json({ error: parsed.error });
-  const { message, modelId = "guider-flash", conversationId, mode } = parsed.data;
+  const { message, modelId = "guider-astron", conversationId, mode } = parsed.data;
   const hubHelp = mode === "hub-help";
 
   const model = modelConfig(modelId);
@@ -1070,8 +1059,7 @@ app.post("/api/chat", async (req, res) => {
   if (user?.disabled) return res.status(403).json({ error: "This account has been disabled." });
   if (maintenanceEnabled() && !isConfiguredOwner(user)) return res.status(503).json({ error: "The service is temporarily in maintenance mode." });
   if (!model.enabled) return res.status(503).json({ error: `${model.name} is temporarily unavailable.` });
-  if (model.tier === "guest" && user) return res.status(400).json({ error: "Guider Offline is for guests only." });
-  if (!user && model.tier !== "guest") return res.status(401).json({ error: "Please sign in to use this model. Guests can use Guider Offline." });
+  // tier "guest" is the only tier now: open to signed-in users and guests alike.
   if (model.tier === "paid" && !canUseModel(user, modelId)) {
     return res.status(403).json({ error: `${model.name} requires an upgrade. Visit /plans.html.` });
   }
@@ -1102,7 +1090,7 @@ app.post("/api/chat", async (req, res) => {
 
   try {
     const reply = await callProvider(model.provider, model.model, [
-      { role: "system", content: hubHelp ? HUB_HELP_SYSTEM : "You are The Tech Guider AI, a helpful assistant." },
+      { role: "system", content: hubHelp ? HUB_HELP_SYSTEM : "You are The Tech Guider Hub Helper AI (model: Guider Astron), a helpful assistant of The Tech Guider Hub." },
       ...history,
       { role: "user", content: message },
     ]);

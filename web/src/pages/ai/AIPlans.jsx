@@ -11,7 +11,7 @@ function money(amount) {
 }
 
 export default function AIPlans() {
-  useMeta('AI Plans & Usage — The Tech Guider Hub', 'Plans, limits and usage for The Tech Guider AI.');
+  useMeta('Hub Helper AI Plans & Usage - The Tech Guider Hub', 'Guider Astron daily limit and your usage for The Tech Guider Hub Helper AI.');
   const [state, setState] = useState({ loading: true, error: null });
   const [plans, setPlans] = useState([]);
   const [models, setModels] = useState([]);
@@ -57,11 +57,11 @@ export default function AIPlans() {
     <div className="container" style={{ paddingTop: 48, paddingBottom: 70, maxWidth: 1080 }}>
       <div className="section-head">
         <div>
-          <div className="eyebrow mb-2">The Tech Guider AI</div>
+          <div className="eyebrow mb-2">The Tech Guider Hub Helper AI</div>
           <h1 className="section-title">Plans &amp; usage</h1>
           <p className="section-sub">
-            Real prices and daily limits, straight from the server. Paid models unlock on the plan
-            that includes them — nothing is charged automatically.
+            The Hub Helper AI (Guider Astron) is free for everyone — daily limits and your usage,
+            straight from the server.
           </p>
         </div>
         <Link to="/ai" className="btn btn-blue btn-lg"><Icon.ai size={18} /> Open chat</Link>
@@ -84,7 +84,7 @@ export default function AIPlans() {
         </div>
       ) : (
         <div className="aiw-plan-current card" style={{ margin: '22px 0' }}>
-          <div className="text-sm muted">You are not signed in. <Link to="/ai">Sign in</Link> to use paid models and track usage.</div>
+          <div className="text-sm muted">You are not signed in. <Link to="/ai">Sign in</Link> to track your usage and keep chat history.</div>
         </div>
       )}
 

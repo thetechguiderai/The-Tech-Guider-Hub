@@ -97,9 +97,9 @@ function AuthPanel({ onAuthed, onBack }) {
         <div className="aiw-auth-logo">
           <Icon.ai size={26} />
         </div>
-        <h1 className="aiw-auth-title">The Tech Guider AI</h1>
+        <h1 className="aiw-auth-title">The Tech Guider Hub Helper AI</h1>
         <p className="aiw-auth-sub">
-          {mode === 'login' ? 'Sign in to chat, keep history and use your unlocked models.' : 'Create an account to save history and unlock more models.'}
+          {mode === 'login' ? 'Sign in to chat with Guider Astron and keep your history.' : 'Create an account to keep your chat history.'}
         </p>
         <div className="aiw-tabs" role="tablist">
           <button type="button" className={mode === 'login' ? 'on' : ''} onClick={() => { setMode('login'); setError(''); }}>Sign in</button>
@@ -184,7 +184,7 @@ function Message({ msg, onCopy, onRetry }) {
 
 /* ---------- workspace ---------- */
 export default function AIWorkspace() {
-  useMeta('The Tech Guider AI — The Tech Guider Hub', 'Chat with The Tech Guider AI: fast answers, coding, research and content help inside the Hub.');
+  useMeta('The Tech Guider Hub Helper AI — The Tech Guider Hub', 'The Tech Guider Hub Helper AI (Guider Astron): free chat help for pages, tools and content ideas inside the Hub.');
   const { conversationId } = useParams();
   const navigate = useNavigate();
 
@@ -459,21 +459,23 @@ export default function AIWorkspace() {
             {activeModel ? activeModel.name : 'The Tech Guider AI'}
           </div>
           <div className="aiw-head-right">
-            <select className="aiw-model" value={modelId} onChange={onSelectModel} aria-label="Model">
-              {usableModels.length === 0 && <option value="">No models available</option>}
-              {usableModels.map((m) => {
-                const note = m.enabled === false
-                  ? ' · Unavailable'
-                  : m.locked
-                    ? (m.tier === 'guest' ? ' · Guest only' : ' · Upgrade required')
-                    : '';
-                return (
-                  <option key={m.id} value={m.id} disabled={m.locked || m.enabled === false}>
-                    {m.name}{note}
-                  </option>
-                );
-              })}
-            </select>
+            {usableModels.length > 1 && (
+              <select className="aiw-model" value={modelId} onChange={onSelectModel} aria-label="Model">
+                {usableModels.length === 0 && <option value="">No models available</option>}
+                {usableModels.map((m) => {
+                  const note = m.enabled === false
+                    ? ' · Unavailable'
+                    : m.locked
+                      ? (m.tier === 'guest' ? ' · Guest only' : ' · Upgrade required')
+                      : '';
+                  return (
+                    <option key={m.id} value={m.id} disabled={m.locked || m.enabled === false}>
+                      {m.name}{note}
+                    </option>
+                  );
+                })}
+              </select>
+            )}
           </div>
         </header>
 
