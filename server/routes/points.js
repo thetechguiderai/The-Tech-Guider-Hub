@@ -2,6 +2,7 @@
 
 const express = require('express');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const jwt = require('jsonwebtoken');
 const { DatabaseSync } = require('node:sqlite');
 const { db, now } = require('../db');
@@ -10,11 +11,11 @@ const { audit, decryptSecret, encryptSecret, getCookies, lookupSession, ipHash, 
 const router = express.Router();
 const ownerRouter = express.Router();
 
-// ----------------------- user identity (AI accounts) -------------------------
-// Coins belong to the AI account system: the site's tg_session cookie is a
-// JWT signed with the shared SESSION_SECRET. We verify it locally (jsonwebtoken
-// is already a dependency), and enrich the display name/email by reading the
-// AI database when it is a local SQLite file. No trust in client claims.
+// ----------------- The Guider Currency (TTG) — missions only ----------------
+// TTG is earned ONLY through missions (today: the Daily Check-in mission).
+// It can never be bought, and it is used exclusively to DISCOUNT the price of
+// paid shop items — cash buyers pay the normal price, TTG holders pay less.
+
 const JWT_SECRET = process.env.SESSION_SECRET || '';
 const IS_SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 const AI_DB_PATH =
@@ -57,7 +58,7 @@ function userFromToken(req) {
 function requireUser(req, res, next) {
   const user = userFromToken(req);
   if (!user) {
-    return res.status(401).json({ error: 'Coins tab karne ke liye AI workspace mein sign in karein.', needsAuth: true });
+    return res.status(401).json({ error: 'Guider Currency (TTG) ke liye AI workspace mein sign in karein.', needsAuth: true });
   }
   req.pointsUser = user;
   next();
@@ -67,7 +68,8 @@ function dayShift(days) {
   return new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
 }
 
-// Base daily check-in reward + growing streak bonus (caps at day 7).
+// Daily Mission reward + growing streak bonus (caps at day 7).
+// TTG sirf missions se milta hai — koi aur earning path nahi.
 const BASE_REWARD = 10;
 const STREAK_BONUS = 2;
 const STREAK_CAP = 7;
@@ -86,17 +88,19 @@ router.get('/me', requireUser, (req, res) => {
   const row = getPoints(user.id);
   const today = new Date().toISOString().slice(0, 10);
   const requests = db.prepare(
-    `SELECT id, source, title, cost, status, note, created_at, decided_at, delivered_code_enc
+    `SELECT id, source, title, cost, discount_percent, status, note, created_at, decided_at, delivered_code_enc
      FROM coin_requests WHERE user_id = ? ORDER BY created_at DESC LIMIT 30`
   ).all(user.id).map((r) => {
-    const out = { id: r.id, source: r.source, title: r.title, cost: r.cost, status: r.status, note: r.note, createdAt: r.created_at, decidedAt: r.decided_at };
-    if (r.status === 'approved' && r.source === 'reward' && r.delivered_code_enc) {
+    const out = { id: r.id, source: r.source, title: r.title, cost: r.cost, discountPercent: r.discount_percent, status: r.status, note: r.note, createdAt: r.created_at, decidedAt: r.decided_at };
+    if (r.status === 'approved' && r.delivered_code_enc) {
       try { out.code = decryptSecret(r.delivered_code_enc); } catch { out.code = null; }
     }
     return out;
   });
   res.json({
     signedIn: true,
+    currency: 'TTG',
+    currencyName: 'Guider Currency',
     user: { id: user.id, email: user.email || null, name: user.name || null },
     points: row ? row.points : 0,
     totalEarned: row ? row.total_earned : 0,
@@ -106,13 +110,13 @@ router.get('/me', requireUser, (req, res) => {
   });
 });
 
-// -------------------------------- check-in -----------------------------------
+// ----------------------------- daily mission ---------------------------------
 router.post('/checkin', rateLimit, requireUser, (req, res) => {
   const user = req.pointsUser;
   const today = new Date().toISOString().slice(0, 10);
   const row = getPoints(user.id);
   if (row && row.last_checkin === today) {
-    return res.status(409).json({ error: 'Aaj ka check-in already ho chuka hai — kal phir aayein!', points: row.points, streak: row.streak, checkedInToday: true });
+    return res.status(409).json({ error: 'Aaj ka Daily Mission complete ho chuka hai — kal naya mission aayega!', points: row.points, streak: row.streak, checkedInToday: true });
   }
   const streak = row && row.last_checkin === dayShift(-1) ? (row.streak || 0) + 1 : 1;
   const earned = rewardFor(streak);
@@ -126,10 +130,10 @@ router.post('/checkin', rateLimit, requireUser, (req, res) => {
        total_earned = excluded.total_earned, streak = excluded.streak,
        last_checkin = excluded.last_checkin, updated_at = excluded.updated_at`
   ).run(user.id, user.email, user.name, points, totalEarned, streak, today, now());
-  res.json({ ok: true, earned, points, streak, checkedInToday: true });
+  res.json({ ok: true, earned, points, streak, checkedInToday: true, currency: 'TTG', mission: 'Daily Check-in' });
 });
 
-// --------------------------------- redeem ------------------------------------
+// ------------------------ redeem: TTG price discount -------------------------
 router.post('/redeem', rateLimit, requireUser, (req, res) => {
   const user = req.pointsUser;
   const body = req.body || {};
@@ -137,43 +141,46 @@ router.post('/redeem', rateLimit, requireUser, (req, res) => {
   const id = Number(body.id);
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid item.' });
 
-  let item = null;
-  let cost = 0;
-  let title = '';
-  if (source === 'shop') {
-    item = db.prepare("SELECT id, title, coin_cost, availability, link_url FROM shop_items WHERE id = ?").get(id);
-    if (!item) return res.status(404).json({ error: 'Shop item not found.' });
-    if (item.availability !== 'available') return res.status(400).json({ error: 'Ye item abhi available nahi hai.' });
-    cost = item.coin_cost || 0;
-    title = item.title;
-  } else {
-    item = db.prepare("SELECT id, label AS title, coin_cost, availability FROM reward_codes WHERE id = ?").get(id);
-    if (!item) return res.status(404).json({ error: 'Reward not found.' });
-    if (!['available', 'limited'].includes(item.availability)) return res.status(400).json({ error: 'Ye reward abhi available nahi hai.' });
-    cost = item.coin_cost || 0;
-    title = item.title;
+  // TTG sirf paid shop items ki price kam karne ke liye hota hai.
+  if (source === 'reward') {
+    return res.status(400).json({ error: 'TTG sirf shop items par discount deta hai — rewards free giveaway process se milte hain.' });
   }
-  if (cost <= 0) return res.status(400).json({ error: 'Ye item coins se redeem nahi hota (owner ne coin cost set nahi ki).' });
+
+  const item = db.prepare(
+    "SELECT id, title, coin_cost, discount_percent, availability, price FROM shop_items WHERE id = ?"
+  ).get(id);
+  if (!item) return res.status(404).json({ error: 'Shop item not found.' });
+  if (item.availability !== 'available') return res.status(400).json({ error: 'Ye item abhi available nahi hai.' });
+
+  const cost = item.coin_cost || 0;
+  const discountPercent = item.discount_percent || 0;
+  if (cost <= 0 || discountPercent <= 0) {
+    return res.status(400).json({ error: 'Is item par TTG discount available nahi (owner ne set nahi ki).' });
+  }
+  if (discountPercent > 90) return res.status(400).json({ error: 'Discount too high.' });
 
   const row = getPoints(user.id);
   const balance = row ? row.points : 0;
   if (balance < cost) {
-    return res.status(400).json({ error: `Coins kam hain — ${cost} chahiye, aap ke paas ${balance} hain. Roz check-in karein!`, points: balance });
+    return res.status(400).json({ error: `TTG kam hain — ${cost} chahiye, aap ke paas ${balance} hain. Roz mission complete karein!`, points: balance });
   }
 
   const info = db.prepare(
-    `INSERT INTO coin_requests (user_id, email, source, source_id, title, cost, status)
-     VALUES (?, ?, ?, ?, ?, ?, 'pending')`
-  ).run(user.id, user.email, source, id, title, cost);
+    `INSERT INTO coin_requests (user_id, email, source, source_id, title, cost, discount_percent, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`
+  ).run(user.id, user.email, source, id, item.title, cost, discountPercent);
   db.prepare('UPDATE user_points SET points = points - ?, updated_at = ? WHERE user_id = ?').run(cost, now(), user.id);
 
   res.status(201).json({
     ok: true,
     requestId: info.lastInsertRowid,
-    title,
+    title: item.title,
     cost,
+    discountPercent,
+    price: item.price || '',
     points: balance - cost,
-    message: 'Redeem request ban gayi — approval ke baad deliver ho jayega.',
+    currency: 'TTG',
+    message: `TTG request ban gayi — approve hone par ${discountPercent}% discount voucher milega (paisa JazzCash se, discounted price).`,
   });
 });
 
@@ -206,13 +213,22 @@ ownerRouter.post('/:id/decide', ownerRequire, (req, res) => {
   const note = String(b.note || '').slice(0, 300);
 
   let delivered = '';
-  if (action === 'approve' && row.source === 'reward' && row.source_id) {
-    const r = db.prepare('SELECT id, label, code_encrypted FROM reward_codes WHERE id = ?').get(row.source_id);
-    if (r && r.code_encrypted) {
-      try {
-        const code = decryptSecret(r.code_encrypted);
-        if (code) delivered = encryptSecret(code);
-      } catch { /* delivered stays empty: owner delivers via Discord */ }
+  let detail = row.title;
+  if (action === 'approve') {
+    if (row.source === 'reward' && row.source_id) {
+      // Legacy reward delivery (keeps older requests working).
+      const r = db.prepare('SELECT id, label, code_encrypted FROM reward_codes WHERE id = ?').get(row.source_id);
+      if (r && r.code_encrypted) {
+        try {
+          const code = decryptSecret(r.code_encrypted);
+          if (code) delivered = encryptSecret(code);
+        } catch { /* delivered stays empty: owner delivers via Discord */ }
+      }
+    } else if (row.discount_percent > 0) {
+      // TTG discount flow: approval issues an honest reusable voucher code.
+      const voucher = 'TTG-' + crypto.randomBytes(4).toString('hex').toUpperCase();
+      delivered = encryptSecret(voucher);
+      detail = `${row.title} - ${row.discount_percent}% off voucher ${voucher} (${row.cost} TTG)`;
     }
   }
 
@@ -232,7 +248,7 @@ ownerRouter.post('/:id/decide', ownerRequire, (req, res) => {
   audit('coin_request_' + action, {
     target: `coin:${id}`,
     result: 'success',
-    detail: `${row.title} (${row.cost} coins) for ${row.email || row.user_id}`,
+    detail,
     ip: ownerId(req),
   });
   res.json({ ok: true, status: action === 'approve' ? 'approved' : 'rejected' });

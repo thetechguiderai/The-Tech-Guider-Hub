@@ -202,6 +202,7 @@ CREATE TABLE IF NOT EXISTS coin_requests (
   source_id INTEGER,
   title TEXT NOT NULL,
   cost INTEGER NOT NULL DEFAULT 0,
+  discount_percent INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'pending',
   delivered_code_enc TEXT DEFAULT '',
   note TEXT DEFAULT '',
@@ -293,9 +294,11 @@ function addColumnIfMissing(table, column, ddl) {
   ['tiktok_settings', 'stat_likes', "TEXT NOT NULL DEFAULT ''"],
   ['tiktok_settings', 'stat_views', "TEXT NOT NULL DEFAULT ''"],
   ['tiktok_settings', 'stats_updated_at', "TEXT NOT NULL DEFAULT ''"],
-  // Coins system: redeemable shop items & rewards carry a coin cost.
+  // Guider Currency (TTG): redeemable shop items carry a coin cost + discount %.
   ['shop_items', 'coin_cost', 'INTEGER NOT NULL DEFAULT 0'],
+  ['shop_items', 'discount_percent', 'INTEGER NOT NULL DEFAULT 0'],
   ['reward_codes', 'coin_cost', 'INTEGER NOT NULL DEFAULT 0'],
+  ['coin_requests', 'discount_percent', 'INTEGER NOT NULL DEFAULT 0'],
 ].forEach(([t, c, d]) => addColumnIfMissing(t, c, d));
 
 // One-time defaults for the creator's own card, exactly as reported by the

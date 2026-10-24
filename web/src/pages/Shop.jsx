@@ -31,14 +31,17 @@ const CAT_ICON = {
   other: <Icon.grid size={16} />,
 };
 
-function CoinBadge({ coins }) {
-  if (!coins || coins <= 0) return null;
-  return <Badge tone="blue">🪙 {coins} coins</Badge>;
+function CoinBadge({ ttg }) {
+  if (!ttg || ttg <= 0) return null;
+  return <Badge tone="blue">🎖 {ttg} TTG</Badge>;
 }
 
-function ItemCard({ title, price, availability, description, linkUrl, footerNote, icon, coinCost, redeemable, onRedeem, redeeming }) {
+const CURRENCY = 'TTG';
+
+function ItemCard({ title, price, availability, description, linkUrl, footerNote, icon, coinCost, discountPercent, redeemable, onRedeem, redeeming, hasTtg }) {
   const avail = AVAIL_LABEL[availability] || availability || '—';
   const tone = AVAIL_TONE[availability] || 'gray';
+  const canDiscount = hasTtg && redeemable && coinCost > 0 && discountPercent > 0;
   return (
     <div className="card resource-card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
@@ -51,11 +54,16 @@ function ItemCard({ title, price, availability, description, linkUrl, footerNote
         <Badge tone={tone}>{avail}</Badge>
       </div>
       {description && <p className="text-sm muted" style={{ margin: 0, lineHeight: 1.65 }}>{description}</p>}
+      {canDiscount && (
+        <div className="text-xs" style={{ background: 'rgba(59,130,246,0.10)', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 10, padding: '7px 10px', color: 'var(--blue)' }}>
+          🎖 <strong>{coinCost} TTG</strong> use karein → <strong>{discountPercent}% off</strong> price. Baqi paisa normal JazzCash se.
+        </div>
+      )}
       <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
         <span className="text-sm" style={{ fontWeight: 700 }}>{price || 'Ask price'}</span>
-        {coinCost > 0 && redeemable ? (
-          <button className="btn btn-blue btn-sm" onClick={() => onRedeem()} disabled={redeeming} title="Coins se redeem karein">
-            🪙 Redeem ({coinCost}) {redeeming && '…'}
+        {canDiscount ? (
+          <button className="btn btn-blue btn-sm" onClick={() => onRedeem()} disabled={redeeming} title="TTG se price discount request karein">
+            🎖 {coinCost} TTG → {discountPercent}% off {redeeming && '…'}
           </button>
         ) : linkUrl ? (
           <a className="btn btn-blue btn-sm" href={linkUrl} target="_blank" rel="noopener noreferrer">
@@ -69,12 +77,7 @@ function ItemCard({ title, price, availability, description, linkUrl, footerNote
   );
 }
 
-function RewardCard({ r, redeemable, onRedeem, redeeming }) {
-  const redeemBtn = redeemable && (r.coin_cost || 0) > 0 && ['available', 'limited'].includes(r.availability) ? (
-    <button className="btn btn-blue btn-sm" onClick={() => onRedeem()} disabled={redeeming}>
-      🪙 Redeem ({r.coin_cost}) {redeeming && '…'}
-    </button>
-  ) : null;
+function RewardCard({ r }) {
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
@@ -88,20 +91,15 @@ function RewardCard({ r, redeemable, onRedeem, redeeming }) {
       </div>
       <p className="text-sm muted" style={{ margin: 0, lineHeight: 1.65 }}>
         {r.code_hint
-          ? `Giveaway reward (${r.edition === 'bedrock' ? 'Bedrock' : 'Java'} edition). Code encrypted hai — redeem approve hone ke baad wallet mein aayega.`
+          ? `Giveaway reward (${r.edition === 'bedrock' ? 'Bedrock' : 'Java'} edition). Code encrypted hai — reward process complete hone ke baad hi deliver hota hai.`
           : `Giveaway reward (${r.edition === 'bedrock' ? 'Bedrock' : 'Java'} edition). Owner approve kare ga phir deliver hota hai.`}
       </p>
       {r.notes && <p className="text-xs muted3" style={{ margin: 0 }}>{r.notes}</p>}
       <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
         <span className="text-sm" style={{ fontWeight: 700 }}>{r.price || 'Giveaway'}</span>
-        <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {redeemBtn}
-          {!redeemBtn && (
-            <a className="btn btn-ghost btn-sm" href="/about" style={{ textDecoration: 'none' }}>
-              How it works <Icon.arrow size={13} />
-            </a>
-          )}
-        </span>
+        <a className="btn btn-ghost btn-sm" href="/about" style={{ textDecoration: 'none' }}>
+          How it works <Icon.arrow size={13} />
+        </a>
       </div>
     </div>
   );
@@ -180,11 +178,11 @@ export default function Shop() {
   async function doCheckin() {
     try {
       const r = await publicApi.checkin();
-      setToast(`🎉 +${r.earned} coins! Streak: ${r.streak} din${r.streak >= 3 ? ' 🔥' : ''}`);
+      setToast(`🎖 Daily Mission complete! +${r.earned} TTG · Mission streak: ${r.streak} din${r.streak >= 3 ? ' 🔥' : ''}`);
       setTimeout(() => setToast(null), 3500);
       await loadWallet();
     } catch (e) {
-      setToast(e.message || 'Check-in fail hua.');
+      setToast(e.message || 'Mission fail hua.');
       setTimeout(() => setToast(null), 3000);
       await loadWallet();
     }
@@ -194,11 +192,11 @@ export default function Shop() {
     setRedeemingId(`${source}:${id}`);
     try {
       const r = await publicApi.redeem(source, id);
-      setToast(`✅ "${r.title}" redeem ho gaya (${r.cost} coins) — approval ka intezar karein.`);
-      setTimeout(() => setToast(null), 4000);
+      setToast(`✅ "${r.title}" — ${r.discountPercent}% off ki request ban gayi (${r.cost} TTG lag gaye). Approve hone par voucher milega.`);
+      setTimeout(() => setToast(null), 4500);
       await loadWallet();
     } catch (e) {
-      setToast(e.message || 'Redeem fail hua.');
+      setToast(e.message || 'Request fail hui.');
       setTimeout(() => setToast(null), 3500);
       await loadWallet();
     } finally {
@@ -252,17 +250,17 @@ export default function Shop() {
         }
       />
 
-      {/* -------------------------- Coins wallet -------------------------- */}
+      {/* ----------------- Guider Currency (TTG) wallet ----------------- */}
       <div className="card" style={{ marginTop: 18, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-        <span className="resource-logo fallback" style={{ width: 40, height: 40, fontSize: 18, display: 'inline-grid', flexShrink: 0 }}>
-          🪙
+        <span className="resource-logo fallback" style={{ width: 40, height: 40, fontSize: 13, fontWeight: 800, display: 'inline-grid', placeItems: 'center', flexShrink: 0 }}>
+          TTG
         </span>
-        {wallet.loading && <Spinner label="Wallet load ho raha…" />}
+        {wallet.loading && <Spinner label="TTG wallet load ho raha…" />}
         {!wallet.loading && wallet.signedIn === false && (
           <>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 15 }}>Coins system</div>
-              <div className="text-xs muted3">Roz check-in karke coins kamayein aur shop items redeem karein.</div>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>Guider Currency (TTG)</div>
+              <div className="text-xs muted3">TTG sirf missions se milta hai — paid cheezon ki price kam karne ke liye. Roz mission complete karein.</div>
             </div>
             <span style={{ marginLeft: 'auto' }}>
               <Link to="/ai" className="btn btn-blue btn-sm" style={{ textDecoration: 'none' }}>
@@ -278,23 +276,23 @@ export default function Shop() {
           <>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: 15 }}>
-                {wallet.data.points} coins
+                {wallet.data.points} TTG
                 {wallet.data.streak > 0 && (
-                  <span className="text-sm muted3" style={{ fontWeight: 500 }}> · 🔥 {wallet.data.streak}-day streak</span>
+                  <span className="text-sm muted3" style={{ fontWeight: 500 }}> · 🔥 Mission streak: {wallet.data.streak} din</span>
                 )}
               </div>
               <div className="text-xs muted3">
                 {wallet.data.checkedInToday
-                  ? 'Aaj ka check-in ho gaya — kal phir aayein.'
-                  : 'Aaj ka check-in available hai!'}
+                  ? 'Aaj ka Daily Mission complete — kal naya mission.'
+                  : 'Aaj ka Daily Mission available hai!'}
               </div>
             </div>
             <span style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button className="btn btn-blue btn-sm" onClick={doCheckin} disabled={wallet.data.checkedInToday}>
-                {wallet.data.checkedInToday ? '✓ Checked in' : '🎁 Daily check-in (+coins)'}
+                {wallet.data.checkedInToday ? '✓ Mission complete' : '🎯 Daily Mission claim (+TTG)'}
               </button>
               <button className="btn btn-ghost btn-sm" onClick={() => setShowRequests(true)}>
-                <Icon.list size={14} /> My redemptions
+                <Icon.list size={14} /> My TTG vouchers
               </button>
             </span>
           </>
@@ -331,15 +329,7 @@ export default function Shop() {
                 <div className="eyebrow" style={{ marginBottom: 10 }}><Icon.star size={13} style={{ verticalAlign: -2 }} /> Awards & Rewards</div>
                 {rewards.length ? (
                   <div className="grid-cards">
-                    {rewards.map((r, i) => (
-                      <RewardCard
-                        key={`r${i}`}
-                        r={r}
-                        redeemable={!!wallet.signedIn}
-                        onRedeem={() => redeem('reward', r.id)}
-                        redeeming={redeemingId === `reward:${r.id}`}
-                      />
-                    ))}
+                    {rewards.map((r, i) => <RewardCard key={`r${i}`} r={r} />)}
                   </div>
                 ) : (
                   <EmptyState
@@ -365,9 +355,11 @@ export default function Shop() {
                         description={it.description}
                         linkUrl={it.link_url}
                         icon={CAT_ICON.promo}
-                        footerNote="Code deliver hone ke liye Discord par rabta karein"
+                        footerNote="Order — price normal, TTG se discount possible"
                         coinCost={it.coin_cost}
+                        discountPercent={it.discount_percent}
                         redeemable={!!wallet.signedIn}
+                        hasTtg
                         onRedeem={() => redeem('shop', it.id)}
                         redeeming={redeemingId === `shop:${it.id}`}
                       />
@@ -397,9 +389,11 @@ export default function Shop() {
                         description={it.description}
                         linkUrl={it.link_url}
                         icon={CAT_ICON.giftcard}
-                        footerNote="Gift card safest delivery — Discord verification ke sath"
+                        footerNote="Gift card — price normal, TTG se discount possible"
                         coinCost={it.coin_cost}
+                        discountPercent={it.discount_percent}
                         redeemable={!!wallet.signedIn}
+                        hasTtg
                         onRedeem={() => redeem('shop', it.id)}
                         redeeming={redeemingId === `shop:${it.id}`}
                       />
@@ -482,9 +476,11 @@ export default function Shop() {
                         description={it.description}
                         linkUrl={it.link_url}
                         icon={CAT_ICON.other}
-                        footerNote="Order — Discord par contact karein"
+                        footerNote="Order — price normal, TTG se discount possible"
                         coinCost={it.coin_cost}
+                        discountPercent={it.discount_percent}
                         redeemable={!!wallet.signedIn}
+                        hasTtg
                         onRedeem={() => redeem('shop', it.id)}
                         redeeming={redeemingId === `shop:${it.id}`}
                       />
@@ -515,21 +511,25 @@ export default function Shop() {
       </div>
 
       {showRequests && (
-        <Modal title="My redemptions" onClose={() => setShowRequests(false)} footer={
+        <Modal title="My TTG vouchers" onClose={() => setShowRequests(false)} footer={
           <button className="btn btn-ghost btn-sm" onClick={() => setShowRequests(false)}>Close</button>
         }>
+          <p className="text-xs muted3" style={{ marginTop: 0 }}>
+            Approved voucher ka code copy karein — jab JazzCash se pay karein to ye code owner ko dein,
+            discounted price lag jayegi. TTG sirf missions se earn hota hai.
+          </p>
           {(wallet.data?.requests || []).length === 0 && (
-            <p className="text-sm muted">Abhi koi redeem request nahi. Shop se koi item coins se redeem karein — request yahan status ke sath dikhegi.</p>
+            <p className="text-sm muted">Abhi koi TTG discount request nahi. Shop se paid item par TTG discount lagayein — request yahan status ke sath dikhegi.</p>
           )}
           {(wallet.data?.requests || []).map((r) => (
             <div key={r.id} style={{ borderTop: '1px solid var(--border)', padding: '10px 0', display: 'flex', gap: 10, alignItems: 'flex-start', justifyContent: 'space-between' }}>
               <div style={{ minWidth: 0 }}>
-                <div className="text-sm" style={{ fontWeight: 600 }}>{r.title}</div>
-                <div className="text-xs muted3">{r.cost} coins · {new Date(r.createdAt).toLocaleString()}</div>
+                <div className="text-sm" style={{ fontWeight: 600 }}>{r.title}{r.discountPercent ? ` — ${r.discountPercent}% off` : ''}</div>
+                <div className="text-xs muted3">{r.cost} TTG · {new Date(r.createdAt).toLocaleString()}</div>
                 {r.note && <div className="text-xs muted" style={{ marginTop: 4 }}>Owner note: {r.note}</div>}
                 {r.code && (
                   <div className="text-xs" style={{ marginTop: 6, fontFamily: 'var(--mono)', wordBreak: 'break-all' }}>
-                    🎁 Code: {r.code}
+                    🎖 Voucher: {r.code}
                   </div>
                 )}
               </div>

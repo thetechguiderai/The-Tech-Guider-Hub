@@ -572,7 +572,9 @@ function oauthRedirectUri(req) {
 }
 app.get("/api/auth/google", (req, res) => {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-    return res.redirect(pagePath("/login.html?oauth=unavailable"));
+    // The Hub SPA (React workspace) renders the auth panel and shows the
+    // "Google sign-in not configured" banner from the ?oauth= param.
+    return res.redirect(pagePath("/?oauth=unavailable"));
   }
   const state = crypto.randomBytes(24).toString("hex");
   res.cookie("tg_oauth_state", state, { httpOnly: true, sameSite: "lax", secure: isSecureRequest(req), maxAge: 10 * 60 * 1000 });
@@ -587,7 +589,7 @@ app.get("/api/auth/google", (req, res) => {
   res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
 });
 app.get("/api/auth/google/callback", async (req, res) => {
-  const fail = (reason) => res.redirect(pagePath(`/login.html?oauth=${encodeURIComponent(reason)}`));
+  const fail = (reason) => res.redirect(pagePath(`/?oauth=${encodeURIComponent(reason)}`));
   if (!req.query.code || !req.query.state || req.query.state !== req.cookies?.tg_oauth_state) return fail("state_failed");
   res.clearCookie("tg_oauth_state");
   try {
@@ -623,7 +625,7 @@ app.get("/api/auth/google/callback", async (req, res) => {
     }
     if (user.disabled) return fail("account_disabled");
     setSession(res, req, user);
-    res.redirect(pagePath("/chat.html?oauth=success"));
+    res.redirect(pagePath("/?oauth=success"));
   } catch (error) {
     console.error("Google OAuth error:", error.message);
     fail("failed");

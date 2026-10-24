@@ -16,7 +16,7 @@ export default function CoinRequestsAdmin() {
       const d = await ownerApi.coinRequests();
       setState({ loading: false, requests: d.requests, error: null });
     } catch {
-      setState({ loading: false, requests: [], error: 'Unable to load coin requests.' });
+      setState({ loading: false, requests: [], error: 'Unable to load TTG requests.' });
     }
   }
 
@@ -27,7 +27,7 @@ export default function CoinRequestsAdmin() {
     try {
       await ownerApi.decideCoinRequest(deciding.id, action, note);
       setDeciding(null);
-      setNotice(`Request #${deciding.id} ${action === 'approve' ? 'approve' : 'reject'} ho gayi${action === 'reject' ? ' — coins user ko wapas kar diye.' : '.'}`);
+      setNotice(`Request #${deciding.id} ${action === 'approve' ? 'approve' : 'reject'} ho gayi${action === 'reject' ? ' — TTGs user ko wapas kar diye.' : '.'}`);
       setTimeout(() => setNotice(null), 3500);
       await load();
     } catch (e) {
@@ -43,8 +43,8 @@ export default function CoinRequestsAdmin() {
     <div>
       <div className="flex align-center justify-between flex-wrap gap-2 mb-2">
         <p className="text-sm muted">
-          Users roz check-in karke coins kamate hain aur shop items redeem karte hain. Approve hone par item deliver hota hai
-          (reward code khud system deliver karta hai agar maujood ho). Reject par coins user ko wapas mil jate hain.
+          Users roz Daily Mission complete karke TTG kamate hain aur paid items par discount lete hain. Approve hone par voucher code user ke wallet mein deliver hota hai
+          Reject par TTG user ko wapas mil jate hain.
         </p>
         <button className="btn btn-ghost btn-sm" onClick={load}>
           <Icon.refresh size={14} /> Refresh
@@ -56,7 +56,7 @@ export default function CoinRequestsAdmin() {
       {state.error && <ErrorState title="Unable to load requests" desc={state.error} retry={load} />}
 
       {!state.loading && state.requests.length === 0 && (
-        <EmptyState title="Koi redeem request nahi" desc="Jub koi user coins se shop item redeem kare ga, request yahan pending list mein aayegi." />
+        <EmptyState title="Koi TTG request nahi" desc="Jub koi user TTG se discount request kare ga, wo yahan pending list mein aayegi." />
       )}
 
       {!state.loading && state.requests.length > 0 && (
@@ -66,9 +66,9 @@ export default function CoinRequestsAdmin() {
               <tr>
                 <th>User</th>
                 <th>Item</th>
-                <th>Cost</th>
+                <th>TTG</th>
                 <th>Status</th>
-                <th>Note</th>
+                <th>Discount</th>
                 <th>Requested</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
@@ -82,9 +82,9 @@ export default function CoinRequestsAdmin() {
                     {r.source === 'shop' && <span className="text-xs muted3" style={{ display: 'block' }}>shop #{r.source_id}</span>}
                   </td>
                   <td style={{ fontWeight: 600 }}>{r.title}</td>
-                  <td>🪙 {r.cost}</td>
+                  <td>🎖 {r.cost} TTG</td>
                   <td><Badge tone={TONE[r.status] || 'gray'}>{r.status}</Badge></td>
-                  <td className="text-sm muted">{r.note || '—'}</td>
+                  <td className="text-sm muted">{r.discount_percent ? `${r.discount_percent}% off` : (r.note || '—')}</td>
                   <td className="text-sm muted">{r.created_at?.slice(0, 16).replace('T', ' ')}</td>
                   <td>
                     <div className="flex gap-2" style={{ justifyContent: 'flex-end' }}>
@@ -115,22 +115,24 @@ export default function CoinRequestsAdmin() {
                 onClick={() => decide(deciding.action, deciding.note || '')}
                 disabled={saving}
               >
-                {saving ? 'Saving…' : deciding.action === 'approve' ? 'Approve & deliver' : 'Reject & refund coins'}
+                {saving ? 'Saving…' : deciding.action === 'approve' ? 'Approve & issue voucher' : 'Reject & refund TTG'}
               </button>
             </>
           }
         >
           <p className="text-sm muted">
-            User <strong>{deciding.email || deciding.user_id}</strong> — 🪙 {deciding.cost} coins — <strong>{deciding.title}</strong>.
+            User <strong>{deciding.email || deciding.user_id}</strong> — 🎖 {deciding.cost} TTG — <strong>{deciding.title}</strong>
+            {deciding.discount_percent ? ` (${deciding.discount_percent}% off)` : ''}.
           </p>
           {deciding.action === 'approve' && (
             <p className="text-xs muted3" style={{ margin: '10px 0' }}>
-              Reward user ke wallet mein code deliver ho jata hai (agar code stored hai). Warna Discord par deliver karein.
+              Approve hone par user ke wallet mein <strong>TTG-{`{code}`}</strong> voucher khud deliver ho jata hai — user wo code aapko
+              payment ke waqt dega aur discounted price lag jayegi.
             </p>
           )}
           {deciding.action === 'reject' && (
             <p className="text-xs muted3" style={{ margin: '10px 0' }}>
-              Reject karne par {deciding.cost} coins user ke wallet mein wapas add ho jate hain.
+              Reject karne par {deciding.cost} TTG user ke wallet mein wapas add ho jate hain.
             </p>
           )}
           <div className="field">

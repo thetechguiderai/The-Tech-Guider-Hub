@@ -31,7 +31,7 @@ const NAV = [
     { to: '/owner/dashboard/shop', label: 'Shop', icon: Icon.gift },
   ]},
   { group: 'Monitor', items: [
-    { to: '/owner/dashboard/coins', label: 'Coins', icon: Icon.gift },
+    { to: '/owner/dashboard/coins', label: 'TTG', icon: Icon.gift },
     { to: '/owner/dashboard/announcements', label: 'Announcements', icon: Icon.alert },
     { to: '/owner/dashboard/analytics', label: 'Analytics', icon: Icon.grid },
   ]},
@@ -52,7 +52,7 @@ const PAGE_TITLES = {
   '/owner/dashboard/minecraft': 'Minecraft Management',
   '/owner/dashboard/rewards': 'Reward Inventory',
   '/owner/dashboard/shop': 'Shop Management',
-  '/owner/dashboard/coins': 'Coin Requests',
+  '/owner/dashboard/coins': 'TTG Discount Requests',
   '/owner/dashboard/announcements': 'Announcements',
   '/owner/dashboard/analytics': 'Analytics',
   '/owner/dashboard/social': 'Social Links & Branding',

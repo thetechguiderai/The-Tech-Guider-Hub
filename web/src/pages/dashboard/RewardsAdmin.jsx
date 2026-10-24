@@ -184,11 +184,10 @@ export default function RewardsAdmin() {
               <label className="field-label">Price</label>
               <input className="input" value={editing.price} onChange={(e) => patch('price', e.target.value)} placeholder="Free / $2" />
             </div>
-            <div className="field">
-              <label className="field-label">Coin cost (users redeem kar sakein)</label>
-              <input className="input" type="number" min="0" value={editing.coin_cost} onChange={(e) => patch('coin_cost', e.target.value)} placeholder="e.g. 200 (0 = redeem off)" />
-            </div>
           </div>
+          <p className="text-xs muted3" style={{ marginTop: 8 }}>
+            Note: TTG sirf shop items par discount deta hai — rewards sirf giveaway process se deliver hote hain, TTG se nahi.
+          </p>
           <Field label="Notes">
             <textarea className="textarea" value={editing.notes} onChange={(e) => patch('notes', e.target.value)} />
           </Field>

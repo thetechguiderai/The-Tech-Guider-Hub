@@ -205,7 +205,7 @@ router.get('/minecraft', (req, res) => {
 // from minecraft_listings so the hub's content lives in the shop too.
 router.get('/shop', (req, res) => {
   const items = db.prepare(
-    `SELECT id, category, title, description, price, availability, link_url, coin_cost
+    `SELECT id, category, title, description, price, availability, link_url, coin_cost, discount_percent
      FROM shop_items WHERE availability != 'hidden'
      ORDER BY sort_order ASC, created_at DESC`
   ).all();

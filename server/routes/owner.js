@@ -545,6 +545,7 @@ function shopBody(b) {
     availability: SHOP_AVAILABILITY.includes(b.availability) ? b.availability : 'available',
     link_url: String(b.link_url || '').trim(),
     coin_cost: Math.max(0, Number.isFinite(Number(b.coin_cost)) ? Math.floor(Number(b.coin_cost)) : 0),
+    discount_percent: Math.min(90, Math.max(0, Number.isFinite(Number(b.discount_percent)) ? Math.floor(Number(b.discount_percent)) : 0)),
     sort_order: Number.isFinite(Number(b.sort_order)) ? Number(b.sort_order) : 0,
   };
 }
@@ -558,9 +559,9 @@ router.post('/shop-items', requireOwner, (req, res) => {
   const item = shopBody(req.body || {});
   if (!item.title) return res.status(400).json({ error: 'Title is required.' });
   const info = db.prepare(
-    `INSERT INTO shop_items (category, title, description, price, availability, link_url, coin_cost, sort_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(item.category, item.title, item.description, item.price, item.availability, item.link_url, item.coin_cost, item.sort_order);
+    `INSERT INTO shop_items (category, title, description, price, availability, link_url, coin_cost, discount_percent, sort_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(item.category, item.title, item.description, item.price, item.availability, item.link_url, item.coin_cost, item.discount_percent, item.sort_order);
   audit('shop_item_created', { target: `shop:${info.lastInsertRowid}`, result: 'success', detail: item.title.slice(0, 60), ip: ownerIp(req) });
   res.status(201).json({ id: Number(info.lastInsertRowid) });
 });
@@ -578,13 +579,14 @@ router.put('/shop-items/:id', requireOwner, (req, res) => {
     availability: b.availability ?? row.availability,
     link_url: b.link_url ?? row.link_url,
     coin_cost: b.coin_cost ?? row.coin_cost,
+    discount_percent: b.discount_percent ?? row.discount_percent,
     sort_order: b.sort_order ?? row.sort_order,
   });
   if (!merged.title) return res.status(400).json({ error: 'Title is required.' });
   db.prepare(
     `UPDATE shop_items SET category = ?, title = ?, description = ?, price = ?, availability = ?,
-       link_url = ?, coin_cost = ?, sort_order = ?, updated_at = ? WHERE id = ?`
-  ).run(merged.category, merged.title, merged.description, merged.price, merged.availability, merged.link_url, merged.coin_cost, merged.sort_order, now(), id);
+       link_url = ?, coin_cost = ?, discount_percent = ?, sort_order = ?, updated_at = ? WHERE id = ?`
+  ).run(merged.category, merged.title, merged.description, merged.price, merged.availability, merged.link_url, merged.coin_cost, merged.discount_percent, merged.sort_order, now(), id);
   audit('shop_item_updated', { target: `shop:${id}`, result: 'success', detail: merged.title.slice(0, 60), ip: ownerIp(req) });
   res.json({ ok: true });
 });
