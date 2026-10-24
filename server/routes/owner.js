@@ -1,10 +1,10 @@
 'use strict';
 
 const express = require('express');
-const crypto = require('node:crypto');
+const bcrypt = require('bcryptjs');
 const { db, now, getSettings, setSetting } = require('../db');
 const {
-  verifyOwnerCode, hashOwnerCode, createSession, destroySession, lookupSession,
+  createSession, destroySession, lookupSession,
   getCookies, setSessionCookie, clearSessionCookie, audit, encryptSecret, decryptSecret,
   getLockout, recordFailure, clearFailures, ipHash,
 } = require('../security');
@@ -14,11 +14,6 @@ const { generate } = require('../sensitivity');
 const router = express.Router();
 
 // ------------------------------ helpers -------------------------------------
-function getOwnerHash() {
-  const row = db.prepare('SELECT code_hash FROM owners ORDER BY id LIMIT 1').get();
-  return row ? row.code_hash : null;
-}
-
 function requireOwner(req, res, next) {
   const cookies = getCookies(req);
   const session = lookupSession(cookies.tgss);
@@ -34,8 +29,11 @@ function ownerIp(req) {
 }
 
 // -------------------------------- auth --------------------------------------
-router.post('/login', (req, res) => {
-  const code = String((req.body && req.body.code) || '').trim();
+// Owner sign-in is email + password based (owner account in the AI users
+// table). The old 10-digit access code flow has been fully retired.
+router.post('/login', async (req, res) => {
+  const email = String((req.body && req.body.email) || '').trim().toLowerCase();
+  const password = String((req.body && req.body.password) || '');
   const ip = ownerIp(req);
 
   const lockoutUntil = getLockout(req);
@@ -47,26 +45,25 @@ router.post('/login', (req, res) => {
     });
   }
 
-  if (!/^\d{10}$/.test(code)) {
-    audit('owner_login', { target: 'login', result: 'failed', detail: 'Invalid format', ip });
-    return res.status(400).json({ error: 'The access code must be exactly 10 digits.' });
-  }
-
-  if (!getOwnerHash()) {
-    audit('owner_login', { target: 'login', result: 'failed', detail: 'No owner configured', ip });
+  const configuredEmail = (process.env.OWNER_EMAIL || '').toLowerCase().trim();
+  const configuredPassword = process.env.OWNER_PASSWORD || '';
+  if (!configuredEmail || !configuredPassword) {
+    audit('owner_login', { target: 'login', result: 'failed', detail: 'Owner credentials not configured', ip });
     return res.status(500).json({ error: 'Owner access is not configured yet on the server.' });
   }
 
-  if (!verifyOwnerCode(code, getOwnerHash())) {
+  const owner = db.prepare('SELECT * FROM users WHERE email = ? AND role = ?').get(configuredEmail, 'owner');
+  const passwordOk = Boolean(owner) && await bcrypt.compare(password, owner.password_hash);
+  if (!passwordOk) {
     const locked = recordFailure(req);
-    audit('owner_login', { target: 'login', result: 'failed', detail: 'Incorrect access code', ip });
+    audit('owner_login', { target: 'login', result: 'failed', detail: 'Incorrect owner credentials', ip });
     if (locked) {
       return res.status(423).json({
         error: 'Too many failed attempts. Access is temporarily locked.',
         retryAfter: Math.ceil((parseInt(process.env.OWNER_LOCKOUT_MS, 10) || 900000) / 1000),
       });
     }
-    return res.status(401).json({ error: 'Incorrect access code. Please try again.' });
+    return res.status(401).json({ error: 'Incorrect owner credentials. Please try again.' });
   }
 
   clearFailures(req);
@@ -88,22 +85,6 @@ router.get('/session', (req, res) => {
   const cookies = getCookies(req);
   const session = lookupSession(cookies.tgss);
   res.json({ authenticated: !!session });
-});
-
-router.post('/regenerate-code', requireOwner, (req, res) => {
-  const newCode = String(crypto.randomInt(0, 10000000000)).padStart(10, '0');
-  const hash = hashOwnerCode(newCode);
-  const row = db.prepare('SELECT id FROM owners ORDER BY id LIMIT 1').get();
-  if (row) {
-    db.prepare('UPDATE owners SET code_hash = ?, updated_at = ? WHERE id = ?').run(hash, now(), row.id);
-  } else {
-    db.prepare('INSERT INTO owners (code_hash) VALUES (?)').run(hash);
-  }
-  audit('owner_code_regenerated', { target: 'owner', result: 'success', detail: 'New access code issued (old invalidated)', ip: ownerIp(req) });
-  res.json({
-    code: newCode,
-    message: 'Old access code invalidated. Copy the new one now — it will not be shown again.',
-  });
 });
 
 // ------------------------------- overview -----------------------------------

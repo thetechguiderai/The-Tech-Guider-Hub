@@ -31,7 +31,8 @@ export default function Owner() {
 }
 
 function Screen({ loading, bootstrap }) {
-  const [code, setCode] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [lockout, setLockout] = useState(null);
@@ -45,7 +46,7 @@ function Screen({ loading, bootstrap }) {
   useEffect(() => {
     if (lockout == null) return;
     timerRef.current = setInterval(() => {
-      setLockout((s) => (s == null || s <= 0 ? s : s - 1));
+      setLockout((s) => (s == null || s <= 0 ? null : s - 1));
     }, 1000);
     return () => clearInterval(timerRef.current);
   }, [lockout == null]); // eslint-disable-line
@@ -53,21 +54,21 @@ function Screen({ loading, bootstrap }) {
   async function submit(e) {
     e.preventDefault();
     if (lockout) return;
-    if (!/^\d{10}$/.test(code)) {
-      setError('The access code must be exactly 10 digits.');
+    if (!email.trim() || !password) {
+      setError('Enter your owner email and password.');
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      const res = await ownerApi.login(code);
+      const res = await ownerApi.login(email.trim(), password);
       if (res.authenticated) navigate('/owner/dashboard', { replace: true });
     } catch (err) {
       if (err.status === 423) {
         setLockout(err.data?.retryAfter || 60);
         setError('Too many failed attempts. Access is temporarily locked.');
-      } else if (err.status === 401 || err.status === 400) {
-        setError(err.message);
+      } else if (err.status === 401) {
+        setError('Incorrect owner credentials. Please try again.');
       } else if (err.status === 500) {
         setError('Owner access is not configured yet on the server.');
       } else {
@@ -104,39 +105,46 @@ function Screen({ loading, bootstrap }) {
         <div className="card" style={{ padding: 26 }}>
           <form onSubmit={submit}>
             <div className="field">
-              <label className="field-label" htmlFor="code">10-digit Owner Access Code</label>
+              <label className="field-label" htmlFor="owner-email">Owner email</label>
               <input
-                id="code"
+                id="owner-email"
                 className="input"
-                style={{ fontFamily: 'var(--mono)', letterSpacing: '0.3em', fontSize: 18, textAlign: 'center' }}
-                type="password"
-                inputMode="numeric"
-                autoComplete="off"
-                maxLength={10}
-                value={code}
-                onChange={(e) => {
-                  setCode(e.target.value.replace(/[^0-9]/g, ''));
-                  setError(null);
-                }}
-                placeholder="••••••••••"
-                aria-label="Owner access code"
-                disabled={loading || !!lockout}
+                type="email"
+                required
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setError(null); }}
+                placeholder="owner@thetechguider.com"
+                autoComplete="username"
               />
-              {error && (
-                <div className="text-sm" style={{ color: 'var(--danger)' }} role="alert">
-                  {error}
-                  {lockout ? ` Retry in ${lockout}s.` : ''}
-                </div>
-              )}
-              {lockout && (
-                <div className="alert alert-warning" role="status">
-                  <Icon.alert size={16} />
-                  <span>Locked out after repeated failed attempts. Waiting {lockout}s…</span>
-                </div>
-              )}
             </div>
+            <div className="field" style={{ marginTop: 12 }}>
+              <label className="field-label" htmlFor="owner-password">Owner password</label>
+              <input
+                id="owner-password"
+                className="input"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setError(null); }}
+                placeholder="••••••••"
+                autoComplete="current-password"
+              />
+            </div>
+            {error && (
+              <div className="text-sm" style={{ color: 'var(--danger)', marginTop: 12 }} role="alert">
+                {error}
+                {lockout ? ` Retry in ${lockout}s.` : ''}
+              </div>
+            )}
+            {lockout && (
+              <div className="alert alert-warning" role="status">
+                <Icon.alert size={16} />
+                <span>Locked out after repeated failed attempts. Waiting {lockout}s…</span>
+              </div>
+            )}
             <button
               className="btn btn-primary btn-block"
+              type="submit"
               disabled={busy || loading || !!lockout}
               style={{ marginTop: 6 }}
             >
@@ -144,7 +152,7 @@ function Screen({ loading, bootstrap }) {
             </button>
           </form>
           <p className="text-xs muted3" style={{ marginTop: 14, lineHeight: 1.6 }}>
-            The code is verified securely on the server. Nothing is stored in your browser except a
+            Signed in with the owner account email and password. Nothing is stored in your browser except a
             temporary, signed, HttpOnly session.
           </p>
         </div>

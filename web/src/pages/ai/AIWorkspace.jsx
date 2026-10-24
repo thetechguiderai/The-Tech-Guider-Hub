@@ -105,6 +105,18 @@ function AuthPanel({ onAuthed, onBack }) {
           <button type="button" className={mode === 'login' ? 'on' : ''} onClick={() => { setMode('login'); setError(''); }}>Sign in</button>
           <button type="button" className={mode === 'signup' ? 'on' : ''} onClick={() => { setMode('signup'); setError(''); }}>Sign up</button>
         </div>
+        <a
+          className="btn btn-ghost"
+          href="/ai/api/auth/google"
+          style={{ display: 'flex', gap: 9, alignItems: 'center', justifyContent: 'center', marginTop: 14, textDecoration: 'none' }}
+          title="Google se sign in karein"
+        >
+          <span aria-hidden="true" style={{ fontWeight: 700, fontSize: 15, color: '#4285F4' }}>G</span>
+          Continue with Google
+        </a>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '12px 0 4px', color: 'var(--muted3)', fontSize: 12 }}>
+          <span style={{ flex: 1, height: 1, background: 'var(--border)' }} /> or <span style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+        </div>
         <form onSubmit={submit} className="aiw-form">
           {mode === 'signup' && (
             <label>
@@ -199,6 +211,7 @@ export default function AIWorkspace() {
   const [usage, setUsage] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showAuthPanel, setShowAuthPanel] = useState(false);
+  const [oauthNotice, setOauthNotice] = useState(null);
 
   const abortRef = useRef(null);
   const scrollRef = useRef(null);
@@ -241,6 +254,25 @@ export default function AIWorkspace() {
       .me()
       .then((me) => { if (alive) setUser(me.user || null); })
       .catch(() => { if (alive) setUser(null); });
+    // Google OAuth redirect lands on /ai?oauth=success|<reason>.
+    const oauth = new URLSearchParams(window.location.search).get('oauth');
+    if (oauth) {
+      window.history.replaceState({}, '', '/ai');
+      if (alive) setOauthNotice(
+        oauth === 'success'
+          ? { ok: true, text: 'Google sign-in kamyab — welcome to The Tech Guider Hub Helper AI!' }
+          : {
+              ok: false,
+              text: oauth === 'unavailable'
+                ? 'Google sign-in owner ne abhi configure nahi kiya — email/password use karein.'
+                : oauth === 'account_disabled'
+                  ? 'Ye account disabled hai. Support se rabta karein.'
+                  : 'Google sign-in fail ho gaya — dobara try karein ya email/password use karein.',
+            }
+      );
+      // Refresh session: cookie was just set by the OAuth callback.
+      aiApi.me().then((me) => { if (alive) setUser(me.user || null); }).catch(() => {});
+    }
     return () => { alive = false; };
   }, []);
 
@@ -407,6 +439,21 @@ export default function AIWorkspace() {
 
   return (
     <div className={`aiw${sidebarOpen ? ' side-open' : ''}`}>
+      {oauthNotice && (
+        <div
+          role="status"
+          style={{
+            padding: '9px 16px',
+            background: oauthNotice.ok ? 'rgba(47,158,68,0.14)' : 'rgba(229,72,77,0.12)',
+            borderBottom: '1px solid var(--border)',
+            display: 'flex', alignItems: 'center', gap: 10, fontSize: 13,
+          }}
+        >
+          <Icon.check size={15} style={{ flexShrink: 0 }} />
+          <span style={{ flex: 1 }}>{oauthNotice.text}</span>
+          <button type="button" className="aiw-linkbtn" onClick={() => setOauthNotice(null)}>✕</button>
+        </div>
+      )}
       <aside className="aiw-side">
         <div className="aiw-side-head">
           <button type="button" className="btn btn-blue aiw-new" onClick={newChat}>

@@ -11,8 +11,6 @@ export default function SettingsAdmin({ mode }) {
   });
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState(null);
-  const [regenerating, setRegenerating] = useState(false);
-  const [newCode, setNewCode] = useState(null);
   const [backingUp, setBackingUp] = useState(false);
   const [backupInfo, setBackupInfo] = useState(null);
 
@@ -52,20 +50,6 @@ export default function SettingsAdmin({ mode }) {
       setNotice(e.message || 'Save failed.');
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function regenerate() {
-    if (!window.confirm('Generate a new owner access code? The old one is invalidated immediately.')) return;
-    setRegenerating(true);
-    try {
-      const d = await ownerApi.regenerateCode();
-      setNewCode(d.code);
-      setNotice(null);
-    } catch (e) {
-      setNotice(e.message || 'Could not regenerate the code.');
-    } finally {
-      setRegenerating(false);
     }
   }
 
@@ -179,30 +163,10 @@ export default function SettingsAdmin({ mode }) {
           Owner access security
         </h3>
         <p className="text-sm muted" style={{ marginBottom: 12 }}>
-          Only a secure hash of your access code is stored. Regenerating creates a fresh 10-digit code and
-          invalidates the previous one immediately. The code is shown to you once.
+          Owner access is protected by your owner account email and password (stored only as a secure
+          bcrypt hash). There is no 10-digit access code anymore — the old code flow has been retired.
+          Owner credentials live in the server <code>.env</code> (<code>OWNER_EMAIL</code> / <code>OWNER_PASSWORD</code>).
         </p>
-        <button className="btn btn-danger btn-sm" onClick={regenerate} disabled={regenerating}>
-          <Icon.refresh size={14} /> {regenerating ? 'Generating…' : 'Regenerate Owner Access Code'}
-        </button>
-        {newCode && (
-          <div className="alert alert-warning mt-1" style={{ marginTop: 14 }} role="status">
-            <div>
-              <strong>Your new 10-digit access code:</strong>
-              <div className="mono" style={{ fontSize: 22, letterSpacing: '0.25em', margin: '8px 0', color: 'var(--text)' }}>
-                {newCode}
-              </div>
-              <span className="text-xs">Save it somewhere safe — this is the only time it is shown.</span>
-              <button
-                className="btn btn-ghost btn-sm"
-                style={{ marginLeft: 10 }}
-                onClick={() => navigator.clipboard?.writeText(newCode)}
-              >
-                <Icon.copy size={13} /> Copy
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

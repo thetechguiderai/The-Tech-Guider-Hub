@@ -33,17 +33,16 @@ export const aiApi = {
   login: (body) => aiRequest('/ai/api/auth/login', { method: 'POST', body: JSON.stringify(body) }),
   signup: (body) => aiRequest('/ai/api/auth/signup', { method: 'POST', body: JSON.stringify(body) }),
   logout: () => aiRequest('/ai/api/auth/logout', { method: 'POST' }),
-
   models: () => aiRequest('/ai/api/models'),
   plans: () => aiRequest('/ai/api/plans'),
   usage: () => aiRequest('/ai/api/usage'),
+  getSettings: () => aiRequest('/ai/api/user/settings'),
+  updateSettings: (body) => aiRequest('/ai/api/user/settings', { method: 'PATCH', body: JSON.stringify(body) }),
   providerStatus: () => aiRequest('/ai/api/providers/status'),
   billingMethods: () => aiRequest('/ai/api/billing/methods'),
-
   conversations: () => aiRequest('/ai/api/conversations'),
   conversation: (id) => aiRequest(`/ai/api/conversations/${id}`),
   deleteConversation: (id) => aiRequest(`/ai/api/conversations/${id}`, { method: 'DELETE' }),
-
   chat: (body, signal) =>
     aiRequest('/ai/api/chat', { method: 'POST', body: JSON.stringify(body), signal }),
 };

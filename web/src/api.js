@@ -53,11 +53,10 @@ export const publicApi = {
 };
 
 export const ownerApi = {
-  login: (code) =>
-    request('/api/owner/login', { method: 'POST', body: JSON.stringify({ code }) }),
+  login: (email, password) =>
+    request('/api/owner/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   logout: () => request('/api/owner/logout', { method: 'POST' }),
   session: () => request('/api/owner/session'),
-  regenerateCode: () => request('/api/owner/regenerate-code', { method: 'POST' }),
   upload: (dataUrl, folder) =>
     request('/api/owner/upload', { method: 'POST', body: JSON.stringify({ dataUrl, folder }) }),
 
