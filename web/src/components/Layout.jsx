@@ -149,6 +149,21 @@ function Header({ onOpenSearch }) {
   const [openGroup, setOpenGroup] = useState(null);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
+  const [points, setPoints] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await publicApi.pointsMe();
+        setPoints(data.points);
+      } catch {
+        setPoints(null);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -203,8 +218,13 @@ function Header({ onOpenSearch }) {
                 <Icon.youtube size={15} />
                 <span className="hide-mobile">Subscribe</span>
               </a>
-              <Link to="/owner" className="btn btn-ghost btn-sm hide-mobile">
-                Owner
+              {points !== null && (
+                <div className="ttg-badge" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 600, marginRight: 12 }}>
+                  <Icon.gift size={14} /> {points} TTG
+                </div>
+              )}
+              <Link to="/auth" className="btn btn-ghost btn-sm hide-mobile">
+                Sign In
               </Link>
               <button
                 className="burger"
