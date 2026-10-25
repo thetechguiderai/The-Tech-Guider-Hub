@@ -68,14 +68,15 @@ function dayShift(days) {
   return new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
 }
 
-// Daily Mission reward + growing streak bonus (caps at day 7).
-// TTG sirf missions se milta hai — koi aur earning path nahi.
-const BASE_REWARD = 10;
-const STREAK_BONUS = 2;
-const STREAK_CAP = 7;
+// Daily Mission reward schedule (owner-set):
+// Din 1 → 10, din 2 → 12, din 3 → 15, din 4 → 18, din 5 → 20,
+// us ke baad har din flat 5 TTG.
+const REWARD_BY_DAY = { 1: 10, 2: 12, 3: 15, 4: 18, 5: 20 };
+const FLAT_AFTER_DAY_5 = 5;
 
 function rewardFor(streak) {
-  return BASE_REWARD + Math.min(streak, STREAK_CAP) * STREAK_BONUS;
+  const day = Math.max(1, streak || 1);
+  return day <= 5 ? (REWARD_BY_DAY[day] ?? FLAT_AFTER_DAY_5) : FLAT_AFTER_DAY_5;
 }
 
 function getPoints(userId) {

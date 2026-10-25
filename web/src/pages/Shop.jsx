@@ -289,6 +289,8 @@ export default function Shop() {
                 {wallet.data.checkedInToday
                   ? 'Aaj ka Daily Mission complete — kal naya mission.'
                   : 'Aaj ka Daily Mission available hai!'}
+                <br />
+                Reward: din 1 = 10, din 2 = 12, din 3 = 15, din 4 = 18, din 5 = 20 TTG — streak torne par wapas 10 se, phir baad har din 5 TTG.
               </div>
             </div>
             <span style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
