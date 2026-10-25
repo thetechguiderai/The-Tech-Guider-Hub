@@ -155,15 +155,18 @@ try { db.exec("CREATE UNIQUE INDEX IF NOT EXISTS users_oauth_identity ON users(o
 // All models run through OpenRouter's free models (zero provider cost). Paid
 // models are one-time per-model unlocks (payments table + owner approval).
 // tier "guest" = open to everyone; tier "paid" = needs a one-time unlock.
+// Guider Astron (running the Hub Helper widget) and Guider Deep (BuildX-only
+// engine) are internal — only astron/paradise/lite/blaze/titan are selectable.
 const MODELS = {
-  "guider-astron":   { name: "Guider Astron",   badge: "🤝", tier: "guest", provider: "openrouter", model: "recursive/flint-v1.0:free",        dailyLimit: 55, price: null,  desc: "Hub Helper — The Tech Guider AI se chat, Hub navigation aur support. Sab ke liye free." },
-  "guider-paradise": { name: "Guider Paradise", badge: "🕊️", tier: "guest", provider: "openrouter", model: "nvidia/nemotron-3.5-super-vl:free", dailyLimit: 50, price: null,  desc: "The Tech Guider AI ka FREE flagship — mazedar general chat, ideas aur tech talk." },
-  "guider-lite":     { name: "Guider Lite",     badge: "🪶", tier: "paid",  provider: "openrouter", model: "xingchen-agi/xing4.0-29b-a4b:free", dailyLimit: 0,  price: 250,   desc: "Sab se tez chote jawab — casual, mobile-friendly, emoji style. Ek dafa kharid = unlimited." },
-  "guider-blaze":    { name: "Guider Blaze",    badge: "⚡", tier: "paid",  provider: "openrouter", model: "nvidia/nemotron-3.5-lightning:free", dailyLimit: 0, price: 399, desc: "Lightning-fast quality jawab — research aur comparison mein tez. Ek dafa kharid = unlimited." },
-  "guider-titan":    { name: "Guider Titan",    badge: "📚", tier: "paid",  provider: "openrouter", model: "dots-studio/dots-3-note-preview:free", dailyLimit: 0, price: 499, desc: "Lambe likhaayi ka king — essays, reports, YouTube scripts. 512K context. Ek dafa kharid = unlimited." },
-  "guider-deep":     { name: "Guider Deep",     badge: "🧠", tier: "paid",  provider: "openrouter", model: "nvidia/nemotron-3-ultra-550b-a55b:free", dailyLimit: 0, price: 599, desc: "Sab se gehra sochne wala — math, logic, expert analysis. Ek dafa kharid = unlimited." },
-  "guider-buildx":   { name: "Guider BuildX",   badge: "💻", tier: "guest", provider: "openrouter", model: "poolside/laguna-s-2.1:free",       dailyLimit: 0,  price: 799,  desc: "Full-stack website designer (BuildX mode). FREE: 250 msg/month — ya paid unlock = unlimited." },
+  "guider-astron":   { name: "Guider Astron",   badge: "🤝", tier: "guest", provider: "openrouter", model: "recursive/flint-v1.0:free",        dailyLimit: 55, price: null,  internal: true,  desc: "Hub Helper engine — floating site widget & hub-help." },
+  "guider-paradise": { name: "Guider Paradise", badge: "🕊️", tier: "guest", provider: "openrouter", model: "nvidia/nemotron-3.5-super-vl:free", dailyLimit: 50, price: null,  desc: "Daily tasks + choti moti designing + best for STUDY — notes, recipes, quick help. FREE 50/day." },
+  "guider-lite":     { name: "Guider Lite",     badge: "🪶", tier: "paid",  provider: "openrouter", model: "xingchen-agi/xing4.0-29b-a4b:free", dailyLimit: 0,  price: 250,   desc: "DESIGNING model — website logos, banners, posters (SVG/CSS code), palettes aur mockups. Ek dafa kharid = unlimited." },
+  "guider-blaze":    { name: "Guider Blaze",    badge: "⚡", tier: "paid",  provider: "openrouter", model: "nvidia/nemotron-3.5-lightning:free", dailyLimit: 100, price: 399, desc: "CONTENT A-to-Z — YouTube channel name, bio, schedule, logo/banner design code, video-editing plans. 100/day." },
+  "guider-titan":    { name: "Guider Titan",    badge: "📚", tier: "paid",  provider: "openrouter", model: "dots-studio/dots-3-note-preview:free", dailyLimit: 100, price: 499, desc: "BUSINESS model — Trading/Stock analysis, Fiverr gigs, office PDFs, business plans. 100/day." },
+  "guider-deep":     { name: "Guider Deep",     badge: "🧠", tier: "guest", provider: "openrouter", model: "nvidia/nemotron-3-ultra-550b-a55b:free", dailyLimit: 0, price: 799, buildxOnly: true, monthlyLimit: 250, desc: "GAME & WEBSITE developer — step-by-step guide, mistakes fix. Sirf BuildX ON pe. FREE 250/mo ya paid unlock." },
 };
+// BuildX mode runs on Guider Deep (dedicated build/engine model).
+const BUILDX_MODEL_ID = "guider-deep";
 const BUILDX_MONTHLY_FREE_LIMIT = 250;
 const MODEL_IDS = Object.keys(MODELS);
 
