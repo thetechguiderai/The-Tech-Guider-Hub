@@ -4,6 +4,36 @@ import { useMeta } from '../../App';
 import { Icon } from '../../components/ui';
 import { aiApi, aiErrorMessage, isRetryable } from '../../aiClient';
 
+/* ---------- brand icons (sparkle / paperclip / paper-plane) ---------- */
+function Sparkle({ size = 18, ...p }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="none" {...p}>
+      <path d="M12 2c.4 3.6 2 6 4.4 7.2C18.6 10.3 20.7 10.6 22 12c-1.3 1.4-3.4 1.7-5.6 2.8C14 16 12.4 18.4 12 22c-.4-3.6-2-6-4.4-7.2C5.4 13.7 3.3 13.4 2 12c1.3-1.4 3.4-1.7 5.6-2.8C10 8 11.6 5.6 12 2z" />
+    </svg>
+  );
+}
+function Paperclip({ size = 18, ...p }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M21.44 11.05L12.25 20.24a6 6 0 0 1-8.49-8.49l8.57-8.57a4 4 0 1 1 5.66 5.66l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    </svg>
+  );
+}
+function Plane({ size = 16, ...p }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" />
+    </svg>
+  );
+}
+function Sliders({ size = 17, ...p }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" {...p}>
+      <path d="M4 21v-7" /><path d="M4 10V3" /><path d="M12 21v-9" /><path d="M12 8V3" /><path d="M20 21v-5" /><path d="M20 12V3" /><path d="M1 14h6" /><path d="M9 8h6" /><path d="M17 16h6" />
+    </svg>
+  );
+}
+
 /* ---------- safe, minimal markdown rendering (no dangerouslySetInnerHTML) ---------- */
 const INLINE = /(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\(https?:\/\/[^\s)]+\))/g;
 function renderInline(str, keyBase) {
@@ -499,11 +529,11 @@ export default function AIWorkspace() {
       )}
       <aside className="aiw-side">
         <div className="aiw-side-brand">
-          <Icon.ai size={15} />
+          <span className="aiw-brand-mark"><Sparkle size={14} /></span>
           <span>The Tech Guider AI</span>
         </div>
         <div className="aiw-side-head">
-          <button type="button" className="btn btn-blue aiw-new" onClick={newChat}>
+          <button type="button" className="btn aiw-new" onClick={newChat}>
             <Icon.plus size={16} /> New Chat
           </button>
           <button
@@ -513,12 +543,11 @@ export default function AIWorkspace() {
             title="BuildX: code aur projects banane wala mode"
           >
             <Icon.tool size={15} /> BuildX
-            <span className="aiw-buildx-tag">{mode === 'buildx' ? 'ON' : 'OFF'}</span>
           </button>
         </div>
         <div className="aiw-convs">
           {!user && <p className="aiw-side-hint">Sign in to save your chats.</p>}
-          {user && conversations.length === 0 && <p className="aiw-side-hint">No conversations yet.</p>}
+          {user && conversations.length === 0 && <p className="aiw-side-hint">Your chats will appear here</p>}
           {conversations.map((c) => (
             <button
               type="button"
@@ -543,13 +572,14 @@ export default function AIWorkspace() {
                   <span className="aiw-user-initial">{(user.name || user.email || 'U').trim().charAt(0).toUpperCase()}</span>
                 )}
                 <span className="aiw-side-name">{user.name || user.email}</span>
+                <span className="aiw-user-sliders"><Sliders size={17} /></span>
               </Link>
               <div className="aiw-side-user-actions">
                 <Link to="/ai/plans" className="aiw-side-link" onClick={() => setSidebarOpen(false)}>
-                  <Icon.star size={15} /> Plans
+                  <Icon.star size={14} /> Plans
                 </Link>
                 <button type="button" className="aiw-side-link" onClick={signOut}>
-                  <Icon.logout size={15} /> Sign out
+                  <Icon.logout size={14} /> Sign out
                 </button>
               </div>
             </div>
@@ -571,8 +601,9 @@ export default function AIWorkspace() {
             {activeModel ? activeModel.name : 'The Tech Guider AI'}
           </div>
           <div className="aiw-head-right">
-            {usableModels.length > 1 && (
-              <select className="aiw-model" value={modelId} onChange={onSelectModel} aria-label="Model">
+            <div className="aiw-model-wrap">
+              <span className="aiw-model-ico"><Icon.settings size={15} /></span>
+              <select className="aiw-model" value={modelId} onChange={onSelectModel} aria-label="Select Models">
                 {usableModels.length === 0 && <option value="">No models available</option>}
                 {usableModels.map((m) => {
                   const note = m.enabled === false
@@ -587,7 +618,8 @@ export default function AIWorkspace() {
                   );
                 })}
               </select>
-            )}
+              <span className="aiw-model-chev">▾</span>
+            </div>
           </div>
         </header>
 
@@ -602,18 +634,16 @@ export default function AIWorkspace() {
               {loadingConv && <div className="aiw-loading-inline"><div className="spinner" /> Loading conversation…</div>}
               {!loadingConv && messages.length === 0 && (
                 <div className="aiw-empty">
-                  <div className={`aiw-bubble${mode === 'buildx' ? ' buildx' : ''}`}>
-                    {mode === 'buildx' ? (
-                      <>
-                        <strong>BuildX mode ON 🛠</strong>
-                        <span>Batao kya banana hai — website, game, script, tool?</span>
-                      </>
-                    ) : (
-                      <>
-                        <strong>Ask Me Anything</strong>
-                        <span>Tech, coding, gaming, YouTube — kuch bhi poochein!</span>
-                      </>
-                    )}
+                  <div className="aiw-hero">
+                    <div className="aiw-hero-ico"><Sparkle size={26} /></div>
+                    <h1 className="aiw-hero-title">
+                      {mode === 'buildx' ? 'Build Anything' : 'Ask Me Anything'}
+                    </h1>
+                    <p className="aiw-hero-sub">
+                      {mode === 'buildx'
+                        ? 'BuildX ON — websites, games, tools, sab ban jayega. Batao kya banana hai?'
+                        : 'The Tech Guider AI (Guider Astron) — tech, coding, gaming ya YouTube, kuch bhi poochein.'}
+                    </p>
                   </div>
                   <div className="aiw-suggests">
                     {(mode === 'buildx'
@@ -672,15 +702,7 @@ export default function AIWorkspace() {
                     <button type="button" onClick={() => setAttached(null)} aria-label="Remove attachment">✕</button>
                   </div>
                 )}
-                <div className="aiw-input-row">
-                  <button
-                    type="button"
-                    className="aiw-attach-btn"
-                    onClick={() => fileInputRef.current && fileInputRef.current.click()}
-                    title="Text/code file attach karein"
-                  >
-                    <Icon.plus size={17} />
-                  </button>
+                <div className="aiw-pill">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -688,24 +710,32 @@ export default function AIWorkspace() {
                     onChange={onPickFile}
                     style={{ display: 'none' }}
                   />
+                  <button
+                    type="button"
+                    className="aiw-attach-btn"
+                    onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                    title="Text/code file attach karein"
+                    aria-label="Attach file"
+                  >
+                    <Paperclip size={17} />
+                  </button>
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); }
                     }}
-                    placeholder={mode === 'buildx' ? 'BuildX: kya banana hai? Website, game, tool…' : (sending ? 'Waiting for a response…' : 'Message The Tech Guider AI…')}
+                    placeholder={mode === 'buildx' ? 'BuildX: kya banana hai?' : 'Ask Me Anything'}
                     rows={1}
                     disabled={sending}
                   />
                   {sending ? (
-                    <button type="button" className="btn btn-ghost aiw-send" onClick={stop} title="Stop">
+                    <button type="button" className="aiw-send-pill ghost" onClick={stop} title="Stop">
                       Stop
                     </button>
                   ) : (
-                    <button type="submit" className="btn btn-blue aiw-send" disabled={!input.trim()} title="Send">
-                      <span className="aiw-send-label hide-mobile">Send</span>
-                      <Icon.arrow size={17} />
+                    <button type="submit" className="aiw-send-pill" disabled={!input.trim()} title="Send">
+                      Send <Plane size={15} />
                     </button>
                   )}
                 </div>
