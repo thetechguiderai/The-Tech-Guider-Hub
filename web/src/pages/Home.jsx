@@ -420,10 +420,10 @@ export default function Home() {
 
       {/* ---------------- AI PANEL ---------------- */}
       <RevealSection>
-        <section className="container sec-x" aria-label="The Tech Guider Hub Helper AI">
+        <section className="container sec-x" aria-label="The Tech Guider AI">
           <div className="x-card" style={{ padding: 36, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
             <div style={{ maxWidth: 620 }}>
-              <div className="sec-x-eyebrow">The Tech Guider Hub Helper AI</div>
+              <div className="sec-x-eyebrow">The Tech Guider AI</div>
               <h2 className="sec-x-title" style={{ fontSize: 'clamp(22px, 3vw, 30px)', marginTop: 8 }}>
                 Your AI assistant by The Tech Guider.
               </h2>
@@ -432,7 +432,7 @@ export default function Home() {
               </p>
             </div>
             <Link to="/ai" className="btn btn-blue btn-lg">
-              <Icon.ai size={18} /> Open The Tech Guider Hub Helper AI
+              <Icon.ai size={18} /> Open The Tech Guider AI
             </Link>
           </div>
         </section>

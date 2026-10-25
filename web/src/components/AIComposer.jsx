@@ -70,7 +70,7 @@ export default function AIComposer() {
   return (
     <section className="home-ai card">
       <div className="home-ai-head">
-        <span className="home-ai-badge"><Icon.ai size={18} /> The Tech Guider Hub Helper AI</span>
+        <span className="home-ai-badge"><Icon.ai size={18} /> The Tech Guider AI</span>
         <span className="home-ai-live"><span className="aiw-dot" /> Ask anything, right here</span>
       </div>
       <h2 className="home-ai-title">Your AI assistant, built into the Hub</h2>
@@ -85,9 +85,9 @@ export default function AIComposer() {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={ready ? 'Ask The Tech Guider Hub Helper AI…' : 'Loading assistant…'}
+          placeholder={ready ? 'Ask The Tech Guider AI…' : 'Loading assistant…'}
           disabled={busy || !ready}
-          aria-label="Ask The Tech Guider Hub Helper AI"
+          aria-label="Ask The Tech Guider AI"
         />
         {busy ? (
           <button type="button" className="btn btn-ghost" onClick={() => abortRef.current?.abort()}>Stop</button>

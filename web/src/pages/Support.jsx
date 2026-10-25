@@ -137,7 +137,7 @@ export default function Support() {
         <div className="state-title">Honesty first</div>
         <p className="state-desc">
           Donations kisi service ki koi guarantee nahi deti. Investment/sponsorship sirf official business
-          email par hoti hai — The Tech Guider Hub Helper AI ke assistants kabhi aapse card numbers, OTP ya
+          email par hoti hai — The Tech Guider AI ke assistants kabhi aapse card numbers, OTP ya
           passwords nahi maangte. Koi aisa kare to report karein.
         </p>
       </div>

@@ -40,7 +40,7 @@ export default function AuthPage() {
             <Icon.ai size={48} />
           </div>
           <h1 style={{ fontSize: 24, letterSpacing: '-0.02em', marginTop: 12 }}>
-            The Tech Guider Hub Helper AI
+            The Tech Guider AI
           </h1>
           <p className="text-sm muted" style={{ marginTop: 6 }}>
             {mode === 'login' ? 'Welcome back! Sign in to continue.' : 'Create an account to save your chats.'}

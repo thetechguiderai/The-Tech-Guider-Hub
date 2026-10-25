@@ -287,7 +287,7 @@ export default function AIWorkspace() {
       window.history.replaceState({}, '', '/ai');
       if (alive) setOauthNotice(
         oauth === 'success'
-          ? { ok: true, text: 'Google sign-in kamyab — welcome to The Tech Guider Hub Helper AI!' }
+          ? { ok: true, text: 'Google sign-in kamyab — welcome to The Tech Guider AI!' }
           : {
               ok: false,
               text: oauth === 'unavailable'

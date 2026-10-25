@@ -112,7 +112,7 @@ const POLLS = [
   { key: '2026-w43', question: 'Agla bada tutorial kis topic pe banaya jaye?', options: ['Minecraft Servers Deep-Guide', 'YouTube Growth Tips', 'Free AI Tools', 'Phone Editing Apps'] },
   { key: '2026-w44', question: 'Aap ka sab se pasand wala AI model kaun sa hai?', options: ['Guider Astron (Free)', 'Guider Pro', 'Gemini', 'Abhi try nahi kiya'] },
   { key: '2026-w45', question: 'Fun Zone mein kya aur add karein?', options: ['Aur games', 'Aur quizzes', 'Giveaways', 'Live streams'] },
-  { key: '2026-w46', question: 'Tech Guider Hub ka best feature kaun sa hai?', options: ['Hub Helper AI', 'Shop + TTG', 'Tutorials', 'Free Tools'] },
+  { key: '2026-w46', question: 'Tech Guider Hub ka best feature kaun sa hai?', options: ['The Tech Guider AI', 'Shop + TTG', 'Tutorials', 'Free Tools'] },
 ];
 
 function weekKeyNow() {

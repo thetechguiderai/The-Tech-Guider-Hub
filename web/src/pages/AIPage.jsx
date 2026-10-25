@@ -5,7 +5,7 @@ import { useMeta } from '../App';
 import { SectionHead, Icon } from '../components/ui';
 
 export default function AIPage() {
-  useMeta('The Tech Guider Hub Helper AI — The Tech Guider Hub', 'Your AI assistant by The Tech Guider. Ask questions and get help exploring the hub.');
+  useMeta('The Tech Guider AI — The Tech Guider Hub', 'Your AI assistant by The Tech Guider. Ask questions and get help exploring the hub.');
   const { site } = useSite();
   const aiUrl = site?.aiUrl;
 
@@ -16,7 +16,7 @@ export default function AIPage() {
           <Icon.ai size={32} />
         </span>
         <h1 style={{ fontSize: 'clamp(30px, 5vw, 44px)', letterSpacing: '-0.04em', marginTop: 22 }}>
-          The Tech Guider Hub Helper AI
+          The Tech Guider AI
         </h1>
         <p className="section-sub" style={{ margin: '14px auto 0' }}>
           Your AI assistant by The Tech Guider. Ask questions, get recommendations and quickly find
@@ -25,11 +25,11 @@ export default function AIPage() {
         <div className="hero-actions" style={{ justifyContent: 'center' }}>
           {aiUrl ? (
             <a className="btn btn-accent btn-lg" href={aiUrl} target="_blank" rel="noopener noreferrer">
-              <Icon.ai size={18} /> Open The Tech Guider Hub Helper AI
+              <Icon.ai size={18} /> Open The Tech Guider AI
             </a>
           ) : (
             <span className="btn btn-ghost btn-lg" style={{ cursor: 'default' }}>
-              <Icon.ai size={18} /> The Tech Guider Hub Helper AI is not available yet
+              <Icon.ai size={18} /> The Tech Guider AI is not available yet
             </span>
           )}
         </div>
@@ -46,7 +46,7 @@ export default function AIPage() {
           </div>
           <div className="state-title">AI assistant unavailable</div>
           <p className="state-desc">
-            The Tech Guider Hub Helper AI is coming soon. The owner has not connected it yet — no placeholder is shown.
+            The Tech Guider AI is coming soon. The owner has not connected it yet — no placeholder is shown.
           </p>
           <Link to="/" className="btn btn-ghost btn-sm">Back to home</Link>
         </div>

@@ -11,7 +11,7 @@ function money(amount) {
 }
 
 export default function AIPlans() {
-  useMeta('Hub Helper AI Plans & Usage - The Tech Guider Hub', 'Guider Astron daily limit and your usage for The Tech Guider Hub Helper AI.');
+  useMeta('The Tech Guider AI Plans & Usage - The Tech Guider Hub', 'Guider Astron daily limit and your usage for The Tech Guider AI.');
   const [state, setState] = useState({ loading: true, error: null });
   const [plans, setPlans] = useState([]);
   const [models, setModels] = useState([]);
@@ -57,10 +57,10 @@ export default function AIPlans() {
     <div className="container" style={{ paddingTop: 48, paddingBottom: 70, maxWidth: 1080 }}>
       <div className="section-head">
         <div>
-          <div className="eyebrow mb-2">The Tech Guider Hub Helper AI</div>
+          <div className="eyebrow mb-2">The Tech Guider AI</div>
           <h1 className="section-title">Plans &amp; usage</h1>
           <p className="section-sub">
-            The Hub Helper AI (Guider Astron) is free for everyone — daily limits and your usage,
+            The Tech Guider AI (Guider Astron) is free for everyone — daily limits and your usage,
             straight from the server.
           </p>
         </div>

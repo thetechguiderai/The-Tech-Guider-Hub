@@ -149,18 +149,18 @@ for (const statement of [
 }
 try { db.exec("CREATE UNIQUE INDEX IF NOT EXISTS users_oauth_identity ON users(oauth_provider, oauth_subject)"); } catch { /* Existing data can be repaired by an admin. */ }
 
-// ---------- MODELS (The Tech Guider Hub Helper AI) ----------
+// ---------- MODELS (The Tech Guider AI) ----------
 // Single flagship model. tier "guest" now means "open to everyone" — signed-in
 // users and guests share the same helper, limits are enforced per usage key.
 const VALID_OPENROUTER_FREE_MODEL = "recursive/flint-v1.0:free";
 const MODELS = {
-  "guider-astron": { name: "Guider Astron", tier: "guest", provider: "openrouter", model: VALID_OPENROUTER_FREE_MODEL, dailyLimit: 30, desc: "The Tech Guider Hub Helper AI — chat, Hub navigation, content ideas aur support. Sab ke liye free." },
+  "guider-astron": { name: "Guider Astron", tier: "guest", provider: "openrouter", model: VALID_OPENROUTER_FREE_MODEL, dailyLimit: 30, desc: "The Tech Guider AI — chat, Hub navigation, content ideas aur support. Sab ke liye free." },
 };
 
 // ---------- PLANS (info only — the helper is free; checkout stays closed) ----------
 const plan = (id, name, monthly, yearly, unlocks, desc) => ({ id, name, monthly, yearly, unlocks, desc });
 const PLANS = [
-  plan("free", "Free", 0, 0, ["guider-astron"], "Guider Astron — the Hub Helper AI, free for everyone."),
+  plan("free", "Free", 0, 0, ["guider-astron"], "Guider Astron — The Tech Guider AI, free for everyone."),
 ];
 for (const [id, model] of Object.entries(MODELS)) {
   db.prepare("INSERT OR IGNORE INTO owner_model_settings (model_id, enabled, tier, daily_limit) VALUES (?, 1, ?, ?)").run(id, model.tier, model.dailyLimit);
@@ -430,8 +430,8 @@ const chatSchema = z.object({
 // System prompt for on-site help. The helper widget uses this so answers stay
 // grounded in what the Hub actually contains instead of inventing pages.
 const HUB_HELP_SYSTEM = [
-  "You are The Tech Guider Hub Helper AI's on-site hub-help assistant inside The Tech Guider Hub website.",
-  "Help users understand and navigate the Hub: pages, features, tools, the Hub Helper AI, plans and payments.",
+  "You are The Tech Guider AI's on-site hub-help assistant inside The Tech Guider Hub website.",
+  "Help users understand and navigate the Hub: pages, features, tools, the AI workspace, plans and payments.",
   "Answer in the same language the user used (English, Urdu or Roman Urdu). Keep replies short and practical.",
   "When a page is relevant, give its exact path as a clickable markdown link using the site domain aware paths shown below.",
   "If something is not part of the Hub, do not invent it; write a short honest reply and steer back to the Hub.",
@@ -444,11 +444,11 @@ const HUB_HELP_SYSTEM = [
   "- Tools: /tools (all tools), Free Fire generator, Tech Guider AI workspace",
   "- Services: /video-editing-packages (video editing), /logo-packages (logo design), /website-packages (website development), /games-packages (games)",
   "- Resources: /resources (downloadable resources with search)",
-  "- Hub Helper AI workspace: /ai, chat history at /ai/chat/<id>, plans & usage at /ai/plans",
+  "- The Tech Guider AI workspace: /ai, chat history at /ai/chat/<id>, plans & usage at /ai/plans",
   "- Community: /about, /team",
   "- Free search: press / (slash) anywhere to open the Hub search modal.",
   "",
-  "AI inside the Hub: The Tech Guider Hub Helper AI (model: Guider Astron) — free for everyone at /ai and in the",
+  "AI inside the Hub: The Tech Guider AI (model: Guider Astron) — free for everyone at /ai and in the",
   "floating help widget; daily limit 30 chats/day, shown with usage at /ai/plans.",
   "Payments: manual review — user sends money (e.g. JazzCash / bank transfer), enters the transaction reference at checkout,",
   "and the owner approves it in the owner dashboard; the plan unlocks after approval.",

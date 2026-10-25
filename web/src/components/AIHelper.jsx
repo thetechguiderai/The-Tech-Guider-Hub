@@ -69,13 +69,13 @@ export default function AIHelper() {
   return (
     <>
       {!panelOpen && (
-        <button type="button" className="aih-fab" onClick={() => setPanelOpen(true)} aria-label="Ask the Hub Helper AI for help">
+        <button type="button" className="aih-fab" onClick={() => setPanelOpen(true)} aria-label="Ask The Tech Guider AI for help">
           <Icon.ai size={22} />
           <span className="aih-fab-label">Ask AI</span>
         </button>
       )}
       {panelOpen && (
-        <div className="aih-panel" role="dialog" aria-label="The Tech Guider Hub Helper AI help">
+        <div className="aih-panel" role="dialog" aria-label="The Tech Guider AI help">
           <div className="aih-head">
             <div className="aih-head-title">
               <Icon.ai size={17} />
