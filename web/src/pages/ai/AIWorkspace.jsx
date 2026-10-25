@@ -105,17 +105,8 @@ function AuthPanel({ onAuthed, onBack }) {
           <button type="button" className={mode === 'login' ? 'on' : ''} onClick={() => { setMode('login'); setError(''); }}>Sign in</button>
           <button type="button" className={mode === 'signup' ? 'on' : ''} onClick={() => { setMode('signup'); setError(''); }}>Sign up</button>
         </div>
-        <a
-          className="btn btn-ghost"
-          href="/ai/api/auth/google"
-          style={{ display: 'flex', gap: 9, alignItems: 'center', justifyContent: 'center', marginTop: 14, textDecoration: 'none' }}
-          title="Google se sign in karein"
-        >
-          <span aria-hidden="true" style={{ fontWeight: 700, fontSize: 15, color: '#4285F4' }}>G</span>
-          Continue with Google
-        </a>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '12px 0 4px', color: 'var(--muted3)', fontSize: 12 }}>
-          <span style={{ flex: 1, height: 1, background: 'var(--border)' }} /> or <span style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+          <span style={{ flex: 1, height: 1, background: 'var(--border)' }} /> Email aur password se sign in karein <span style={{ flex: 1, height: 1, background: 'var(--border)' }} />
         </div>
         <form onSubmit={submit} className="aiw-form">
           {mode === 'signup' && (

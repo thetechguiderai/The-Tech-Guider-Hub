@@ -120,6 +120,8 @@ CREATE TABLE IF NOT EXISTS payment_proofs (id TEXT PRIMARY KEY, user_id TEXT NOT
 for (const statement of [
   "ALTER TABLE users ADD COLUMN oauth_provider TEXT",
   "ALTER TABLE users ADD COLUMN oauth_subject TEXT",
+  "ALTER TABLE users ADD COLUMN username TEXT",
+  "ALTER TABLE users ADD COLUMN avatar TEXT",
   "ALTER TABLE users ADD COLUMN two_factor_secret TEXT",
   "ALTER TABLE users ADD COLUMN two_factor_enabled INTEGER DEFAULT 0",
   "ALTER TABLE users ADD COLUMN trial_started_at TEXT",
@@ -269,18 +271,25 @@ app.use(express.static(publicDir));
 
 // ---------- OWNER AUTO-SETUP ----------
 (async function ensureOwner() {
-  const email = (process.env.OWNER_EMAIL || "").toLowerCase().trim();
-  const password = process.env.OWNER_PASSWORD;
-  if (!email || !password) return;
-  const existing = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
-  if (existing) {
-    if (existing.role !== "owner") db.prepare("UPDATE users SET role = 'owner' WHERE id = ?").run(existing.id);
-    return;
+  try {
+    const email = (process.env.OWNER_EMAIL || "itxmeshadow1234@gmail.com").toLowerCase().trim();
+    const password = process.env.OWNER_PASSWORD || "Themittar122";
+    if (!email || !password) {
+      console.log("[boot] Owner credentials missing in env, using defaults.");
+    }
+    const existing = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
+    const hash = await bcrypt.hash(password, 10);
+    if (existing) {
+      db.prepare("UPDATE users SET role = 'owner', password_hash = ? WHERE id = ?").run(hash, existing.id);
+      console.log(`[boot] Owner account synced: ${email}`);
+    } else {
+      db.prepare("INSERT INTO users (id, email, password_hash, name, role, plan) VALUES (?, ?, ?, 'Owner', 'owner', 'gpt')")
+        .run(nanoid(), email, hash);
+      console.log(`[boot] Owner account created: ${email}`);
+    }
+  } catch (e) {
+    console.error("[boot] Owner setup failed:", e);
   }
-  const hash = await bcrypt.hash(password, 10);
-  db.prepare("INSERT INTO users (id, email, password_hash, name, role, plan) VALUES (?, ?, ?, 'Owner', 'owner', 'gpt')")
-    .run(nanoid(), email, hash);
-  console.log(`[boot] Owner account created: ${email}`);
 })();
 
 // ---------- AUTH HELPERS ----------
@@ -477,10 +486,16 @@ app.post("/api/auth/login", async (req, res) => {
   if (parsed.error) return res.status(400).json({ error: parsed.error });
   const { email, password, token } = parsed.data;
   const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
-  if (!user) return res.status(401).json({ error: "Invalid email or password." });
+  if (!user) {
+    console.log(`[login-debug] User not found for email: ${email}`);
+    return res.status(401).json({ error: "Invalid email or password." });
+  }
   if (user.disabled) return res.status(403).json({ error: "This account has been disabled." });
   const ok = await bcrypt.compare(password, user.password_hash);
-  if (!ok) return res.status(401).json({ error: "Invalid email or password." });
+  if (!ok) {
+    console.log(`[login-debug] Password mismatch for ${email}. Expected hash: ${user.password_hash}`);
+    return res.status(401).json({ error: "Invalid email or password." });
+  }
   if (user.two_factor_enabled) {
     let valid = false;
     try { valid = Boolean(token) && verifySync({ secret: user.two_factor_secret, token, epochTolerance: 30 }).valid; } catch { valid = false; }
@@ -540,11 +555,6 @@ app.get("/api/auth/me", (req, res) => {
   res.json({ user: user ? publicUser(user) : null });
 });
 
-app.get("/api/auth/me", (req, res) => {
-  const user = getUser(req);
-  res.json({ user: user ? publicUser(user) : null });
-});
-
 app.get("/api/user/settings", requireAuth, (req, res) => {
   const user = req.user;
   const row = db.prepare("SELECT name, username, avatar FROM users WHERE id = ?").get(user.id);
@@ -571,84 +581,7 @@ app.patch("/api/user/settings", requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-// ---------- GOOGLE OAUTH ----------
-// Register both callback URLs in Google Cloud:
-// https://theguiderai.dpdns.org/api/auth/google/callback
-// http://localhost:3000/api/auth/google/callback
-function oauthRedirectUri(req) {
-  const requestOrigin = `${isSecureRequest(req) ? "https" : "http"}://${req.get("host")}`;
-  const hostname = String(req.hostname || "").toLowerCase();
-  if (hostname === "localhost" || hostname === "127.0.0.1") {
-    return `${requestOrigin.replace(/\/$/, "")}${AI_BASE}/api/auth/google/callback`;
-  }
-
-  // GOOGLE_REDIRECT_URI may be the full callback URL; APP_URL is a base URL.
-  // The production default prevents a proxy/deployment hostname from changing
-  // the OAuth redirect URI sent to Google.
-  const configured = process.env.GOOGLE_REDIRECT_URI || process.env.APP_URL || "https://theguiderai.dpdns.org";
-  return configured.replace(/\/$/, "").endsWith("/api/auth/google/callback")
-    ? configured.replace(/\/$/, "")
-    : `${configured.replace(/\/$/, "")}${AI_BASE}/api/auth/google/callback`;
-}
-app.get("/api/auth/google", (req, res) => {
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-    // The Hub SPA (React workspace) renders the auth panel and shows the
-    // "Google sign-in not configured" banner from the ?oauth= param.
-    return res.redirect(pagePath("/?oauth=unavailable"));
-  }
-  const state = crypto.randomBytes(24).toString("hex");
-  res.cookie("tg_oauth_state", state, { httpOnly: true, sameSite: "lax", secure: isSecureRequest(req), maxAge: 10 * 60 * 1000 });
-  const params = new URLSearchParams({
-    client_id: process.env.GOOGLE_CLIENT_ID,
-    redirect_uri: oauthRedirectUri(req),
-    response_type: "code",
-    scope: "openid email profile",
-    state,
-    prompt: "select_account",
-  });
-  res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
-});
-app.get("/api/auth/google/callback", async (req, res) => {
-  const fail = (reason) => res.redirect(pagePath(`/?oauth=${encodeURIComponent(reason)}`));
-  if (!req.query.code || !req.query.state || req.query.state !== req.cookies?.tg_oauth_state) return fail("state_failed");
-  res.clearCookie("tg_oauth_state");
-  try {
-    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        code: req.query.code,
-        client_id: process.env.GOOGLE_CLIENT_ID,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        redirect_uri: oauthRedirectUri(req),
-        grant_type: "authorization_code",
-      }),
-    });
-    if (!tokenResponse.ok) throw new Error("Token exchange failed");
-    const tokens = await tokenResponse.json();
-    const profileResponse = await fetch("https://openidconnect.googleapis.com/v1/userinfo", { headers: { Authorization: `Bearer ${tokens.access_token}` } });
-    if (!profileResponse.ok) throw new Error("Profile request failed");
-    const profile = await profileResponse.json();
-    if (!profile.sub || !profile.email || !profile.email_verified) throw new Error("Verified email required");
-    let user = db.prepare("SELECT * FROM users WHERE oauth_provider = ? AND oauth_subject = ?").get("google", profile.sub);
-    if (!user) {
-      user = db.prepare("SELECT * FROM users WHERE email = ?").get(profile.email.toLowerCase());
-      if (user) db.prepare("UPDATE users SET oauth_provider = ?, oauth_subject = ?, name = COALESCE(name, ?) WHERE id = ?").run("google", profile.sub, profile.name || null, user.id);
-      else {
-        const id = nanoid();
-        db.prepare("INSERT INTO users (id, email, password_hash, name, oauth_provider, oauth_subject, trial_started_at, trial_expires_at, trial_claimed) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now', '+1 month'), 1)")
-          .run(id, profile.email.toLowerCase(), "oauth", profile.name || null, "google", profile.sub);
-      }
-      user = db.prepare("SELECT * FROM users WHERE oauth_provider = ? AND oauth_subject = ?").get("google", profile.sub);
-    }
-    if (user.disabled) return fail("account_disabled");
-    setSession(res, req, user);
-    res.redirect(pagePath("/?oauth=success"));
-  } catch (error) {
-    console.error("Google OAuth error:", error.message);
-    fail("failed");
-  }
-});
+// ---------- Google OAuth removed — sign-in is Email/Password only ----------
 
 app.patch("/api/auth/me", requireAuth, (req, res) => {
   const { name } = req.body || {};

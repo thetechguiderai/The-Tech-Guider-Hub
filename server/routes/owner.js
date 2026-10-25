@@ -2,6 +2,8 @@
 
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const path = require('node:path');
+const { DatabaseSync } = require('node:sqlite');
 const { db, now, getSettings, setSetting } = require('../db');
 const {
   createSession, destroySession, lookupSession,
@@ -10,6 +12,10 @@ const {
 } = require('../security');
 const { fetchFromYouTube, getSettings: getYtSettings, markConfigured } = require('../youtube');
 const { generate } = require('../sensitivity');
+
+// AI Database connection for owner login check
+const aiDbPath = path.join(__dirname, '..', '..', 'ai', 'Server', 'tech-guider.db');
+const aiDb = new DatabaseSync(aiDbPath);
 
 const router = express.Router();
 
@@ -52,7 +58,7 @@ router.post('/login', async (req, res) => {
     return res.status(500).json({ error: 'Owner access is not configured yet on the server.' });
   }
 
-  const owner = db.prepare('SELECT * FROM users WHERE email = ? AND role = ?').get(configuredEmail, 'owner');
+  const owner = aiDb.prepare('SELECT * FROM users WHERE email = ? AND role = ?').get(configuredEmail, 'owner');
   const passwordOk = Boolean(owner) && await bcrypt.compare(password, owner.password_hash);
   if (!passwordOk) {
     const locked = recordFailure(req);

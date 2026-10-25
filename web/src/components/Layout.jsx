@@ -1,10 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { publicApi } from '../api';
+import { aiApi } from '../aiClient';
 import { useSite } from '../context';
 import { Icon, Spinner } from './ui';
 import { SITE_LINKS, socialLink, SUBSCRIBE_URL } from '../links';
 import AIHelper from './AIHelper';
+
+// Dispatched from Shop.jsx after Daily Mission check-in / redeem so the header
+// badge refreshes instantly instead of waiting for the next page load.
+export function notifyTTGUpdate() {
+  window.dispatchEvent(new Event('ttg:updated'));
+}
 
 // Primary navigation. Items with `children` render a flyout (grouped).
 export const NAV = [
@@ -150,20 +157,50 @@ function Header({ onOpenSearch }) {
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   const [points, setPoints] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+
+  async function loadTTG() {
+    try {
+      const data = await publicApi.pointsMe();
+      setPoints(data.points);
+    } catch {
+      setPoints(null);
+    }
+  }
+
+  async function loadUser() {
+    try {
+      const data = await aiApi.me();
+      setUser(data.user || null);
+    } catch {
+      setUser(null);
+    }
+  }
 
   useEffect(() => {
-    (async () => {
-      try {
-        const data = await publicApi.pointsMe();
-        setPoints(data.points);
-      } catch {
-        setPoints(null);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    loadUser();
+    loadTTG();
+    const onTTG = () => loadTTG();
+    window.addEventListener('ttg:updated', onTTG);
+    window.addEventListener('focus', onTTG);
+    return () => {
+      window.removeEventListener('ttg:updated', onTTG);
+      window.removeEventListener('focus', onTTG);
+    };
   }, []);
+
+  // Refresh signed-in state + TTG balance when navigating between pages.
+  useEffect(() => {
+    loadUser();
+    loadTTG();
+  }, [location.pathname]);
+
+  async function handleSignOut() {
+    try { await aiApi.logout(); } catch { /* session already gone */ }
+    setUser(null);
+    setPoints(null);
+    loadTTG();
+  }
 
   useEffect(() => {
     setMobileOpen(false);
@@ -223,9 +260,48 @@ function Header({ onOpenSearch }) {
                   <Icon.gift size={14} /> {points} TTG
                 </div>
               )}
-              <Link to="/auth" className="btn btn-ghost btn-sm hide-mobile">
-                Sign In
-              </Link>
+              {user ? (
+                <>
+                  <Link
+                    to="/ai"
+                    className="btn btn-ghost btn-sm"
+                    style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                    title={`${user.name || user.email} — AI Workspace`}
+                  >
+                    {user.avatar ? (
+                      <img src={user.avatar} alt="" width={22} height={22} style={{ borderRadius: '50%', objectFit: 'cover' }} />
+                    ) : (
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          width: 22, height: 22, borderRadius: '50%',
+                          background: 'var(--blue, #2563eb)', color: '#fff',
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
+                        }}
+                      >
+                        {(user.name || user.email || 'U').trim().charAt(0)}
+                      </span>
+                    )}
+                    <span className="hide-mobile" style={{ maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {user.name || user.email}
+                    </span>
+                  </Link>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm hide-mobile"
+                    onClick={handleSignOut}
+                    title="Sign out"
+                  >
+                    <Icon.close size={14} />
+                    <span className="visually-hidden">Sign out</span>
+                  </button>
+                </>
+              ) : (
+                <Link to="/auth" className="btn btn-ghost btn-sm hide-mobile">
+                  Sign In
+                </Link>
+              )}
               <button
                 className="burger"
                 aria-label={mobileOpen ? 'Close menu' : 'Open menu'}

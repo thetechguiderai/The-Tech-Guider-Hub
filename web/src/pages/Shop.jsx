@@ -181,6 +181,8 @@ export default function Shop() {
       setToast(`🎖 Daily Mission complete! +${r.earned} TTG · Mission streak: ${r.streak} din${r.streak >= 3 ? ' 🔥' : ''}`);
       setTimeout(() => setToast(null), 3500);
       await loadWallet();
+      // Header TTG badge ko foran refresh karo
+      window.dispatchEvent(new Event('ttg:updated'));
     } catch (e) {
       setToast(e.message || 'Mission fail hua.');
       setTimeout(() => setToast(null), 3000);
@@ -195,6 +197,8 @@ export default function Shop() {
       setToast(`✅ "${r.title}" — ${r.discountPercent}% off ki request ban gayi (${r.cost} TTG lag gaye). Approve hone par voucher milega.`);
       setTimeout(() => setToast(null), 4500);
       await loadWallet();
+      // Header TTG badge ko foran refresh karo
+      window.dispatchEvent(new Event('ttg:updated'));
     } catch (e) {
       setToast(e.message || 'Request fail hui.');
       setTimeout(() => setToast(null), 3500);
