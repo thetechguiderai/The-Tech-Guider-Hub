@@ -13,9 +13,30 @@ const {
 const { fetchFromYouTube, getSettings: getYtSettings, markConfigured } = require('../youtube');
 const { generate } = require('../sensitivity');
 
-// AI Database connection for owner login check
-const aiDbPath = path.join(__dirname, '..', '..', 'ai', 'Server', 'tech-guider.db');
-const aiDb = new DatabaseSync(aiDbPath);
+// AI Database connection for owner login check.
+// Opened lazily (and only where it is genuinely needed) because an eager open
+// at module load crashes cold boots when the AI DB file is not present yet.
+const IS_SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const AI_DB_PATH =
+  process.env.DATABASE_PATH ||
+  (IS_SERVERLESS
+    ? require('node:os').tmpdir() + path.join('', 'tech-guider.db')
+    : path.join(__dirname, '..', '..', 'ai', 'Server', 'tech-guider.db'));
+
+let aiDb = null;
+let aiDbFailed = false;
+function getAiDb() {
+  if (aiDb) return aiDb;
+  if (aiDbFailed) return null;
+  try {
+    aiDb = new DatabaseSync(AI_DB_PATH);
+    return aiDb;
+  } catch (e) {
+    aiDbFailed = true;
+    console.error('[owner] AI DB open failed:', e && e.message);
+    return null;
+  }
+}
 
 const router = express.Router();
 
@@ -58,7 +79,10 @@ router.post('/login', async (req, res) => {
     return res.status(500).json({ error: 'Owner access is not configured yet on the server.' });
   }
 
-  const owner = aiDb.prepare('SELECT * FROM users WHERE email = ? AND role = ?').get(configuredEmail, 'owner');
+  const aiHandle = getAiDb();
+  const owner = aiHandle
+    ? aiHandle.prepare('SELECT * FROM users WHERE email = ? AND role = ?').get(configuredEmail, 'owner')
+    : null;
   const passwordOk = Boolean(owner) && await bcrypt.compare(password, owner.password_hash);
   if (!passwordOk) {
     const locked = recordFailure(req);

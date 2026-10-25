@@ -257,6 +257,13 @@ const PORT = Number(process.env.PORT) || 4500;
 if (process.env.VERCEL) {
   module.exports = app;
 } else {
+// On serverless (Vercel) the AI app is normally imported lazily on the first
+// /ai request. Warm it up at boot so its owner auto-setup runs before the
+// owner ever logs in via /owner with email + password.
+if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+  getAiApp().catch(() => { /* logged inside getAiApp */ });
+}
+
   app.listen(PORT, () => {
     console.log(`The Tech Guider Hub server running on http://localhost:${PORT}`);
     if (process.env.NODE_ENV !== 'production') {
