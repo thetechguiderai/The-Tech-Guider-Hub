@@ -452,7 +452,7 @@ const HUB_HELP_SYSTEM = [
   "floating help widget; daily limit 30 chats/day, shown with usage at /ai/plans.",
   "Payments: manual review — user sends money (e.g. JazzCash / bank transfer), enters the transaction reference at checkout,",
   "and the owner approves it in the owner dashboard; the plan unlocks after approval.",
-  "The owner panel lives at /owner (10-digit access code).",
+  "The owner panel lives at /owner (email + password login).",
   "Never ask for passwords, card numbers or OTPs. Point users to the official YouTube channel for video content.",
 ].join("\n");
 const BUILDX_SYSTEM = [
