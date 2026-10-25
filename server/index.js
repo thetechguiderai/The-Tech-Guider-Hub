@@ -93,6 +93,8 @@ const { userRouter: pointsRouter, ownerRouter: coinsOwnerRouter } = require('./r
 // Registered BEFORE the /api/owner mount so exact /api/owner/coins/* paths win.
 app.use('/api/owner/coins', coinsOwnerRouter);
 app.use('/api/points', pointsRouter);
+const { funRouter } = require('./routes/fun');
+app.use('/api/fun', funRouter);
 app.use('/api/public', publicRoutes);
 app.use('/api/owner', ownerRoutes);
 app.use('/api/tiktok', tiktokRoutes);

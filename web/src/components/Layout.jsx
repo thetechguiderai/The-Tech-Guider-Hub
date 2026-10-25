@@ -18,6 +18,7 @@ export const NAV = [
   { to: '/', label: 'Home', icon: 'home' },
   { to: '/videos', label: 'Videos', icon: 'video' },
   { to: '/shop', label: 'Shop', icon: 'gift' },
+  { to: '/fun', label: 'Fun Zone', icon: 'star' },
   { to: '/tiktok', label: 'TikTok', icon: 'tiktok' },
   {
     label: 'Tools',

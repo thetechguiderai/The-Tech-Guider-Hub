@@ -212,6 +212,22 @@ CREATE TABLE IF NOT EXISTS coin_requests (
 CREATE INDEX IF NOT EXISTS idx_coin_requests_user ON coin_requests (user_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_coin_requests_status ON coin_requests (status, created_at);
 
+CREATE TABLE IF NOT EXISTS quiz_scores (
+  user_id TEXT PRIMARY KEY,
+  name TEXT DEFAULT '',
+  best_score INTEGER NOT NULL DEFAULT 0,
+  plays INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS fun_poll_votes (
+  poll_key TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  option_index INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (poll_key, user_id)
+);
+
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -299,6 +315,8 @@ function addColumnIfMissing(table, column, ddl) {
   ['shop_items', 'discount_percent', 'INTEGER NOT NULL DEFAULT 0'],
   ['reward_codes', 'coin_cost', 'INTEGER NOT NULL DEFAULT 0'],
   ['coin_requests', 'discount_percent', 'INTEGER NOT NULL DEFAULT 0'],
+  // Fun Zone: daily Lucky Spin (mission #2) — last spin date on user_points.
+  ['user_points', 'spin_last', "TEXT NOT NULL DEFAULT ''"],
 ].forEach(([t, c, d]) => addColumnIfMissing(t, c, d));
 
 // One-time defaults for the creator's own card, exactly as reported by the

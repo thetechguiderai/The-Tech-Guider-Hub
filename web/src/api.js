@@ -52,6 +52,20 @@ export const publicApi = {
   tiktokLive: () => request('/api/tiktok/live'),
 };
 
+// --- Fun Zone (entertainment: spin, quiz, fact, poll, leaderboard) ---
+export const funApi = {
+  fact: () => request('/api/fun/fact'),
+  poll: () => request('/api/fun/poll'),
+  pollVote: (optionIndex) =>
+    request('/api/fun/poll/vote', { method: 'POST', body: JSON.stringify({ optionIndex }) }),
+  leaderboard: () => request('/api/fun/leaderboard'),
+  spinStatus: () => request('/api/fun/spin/status'),
+  spin: () => request('/api/fun/spin', { method: 'POST', body: '{}' }),
+  quizMe: () => request('/api/fun/quiz/me'),
+  quizScore: (score) => request('/api/fun/quiz/score', { method: 'POST', body: JSON.stringify({ score }) }),
+  quizLeaderboard: () => request('/api/fun/quiz/leaderboard'),
+};
+
 export const ownerApi = {
   login: (email, password) =>
     request('/api/owner/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
