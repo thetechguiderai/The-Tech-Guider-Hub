@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { funApi, publicApi } from '../api';
 import { useMeta } from '../App';
 import { Icon, Spinner } from '../components/ui';
-import QUIZ_QUESTIONS, { QUIZ_ROUND_SIZE } from '../data/quizQuestions';
+import QUIZ_QUESTIONS, { QUIZ_ROUND_SIZE } from '../content/quizQuestions';
 
 // ============================== Spin Wheel ==================================
 // Server hi segment choose karta hai (fair odds) — frontend sirf animation.
@@ -454,3 +454,4 @@ export default function FunZone() {
     </main>
   );
 }
+
