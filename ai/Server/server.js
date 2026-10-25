@@ -270,23 +270,29 @@ app.get(["/owner", "/owner.html"], requireOwner, (req, res) => res.sendFile(path
 app.use(express.static(publicDir));
 
 // ---------- OWNER AUTO-SETUP ----------
-(async function ensureOwner() {
-  try {
-    const email = (process.env.OWNER_EMAIL || "itxmeshadow1234@gmail.com").toLowerCase().trim();
-    const password = process.env.OWNER_PASSWORD || "Themittar122";
-    if (!email || !password) {
-      console.log("[boot] Owner credentials missing in env, using defaults.");
-    }
-    const existing = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
-    const hash = await bcrypt.hash(password, 10);
-    if (existing) {
+// On serverless hosts every cold start may get a fresh (or per-instance)
+// database, so boot-time-only owner setup is not enough: each instance might
+// miss the owner row. syncOwnerAccount() is idempotent and is awaited on
+// owner logins (and run once at boot) so the owner can always sign in.
+async function syncOwnerAccount() {
+  const email = (process.env.OWNER_EMAIL || "itxmeshadow1234@gmail.com").toLowerCase().trim();
+  const password = process.env.OWNER_PASSWORD || "Themittar122";
+  const hash = await bcrypt.hash(password, 10);
+  const existing = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
+  if (existing) {
+    if (existing.role !== "owner" || existing.password_hash !== hash) {
       db.prepare("UPDATE users SET role = 'owner', password_hash = ? WHERE id = ?").run(hash, existing.id);
-      console.log(`[boot] Owner account synced: ${email}`);
-    } else {
-      db.prepare("INSERT INTO users (id, email, password_hash, name, role, plan) VALUES (?, ?, ?, 'Owner', 'owner', 'gpt')")
-        .run(nanoid(), email, hash);
-      console.log(`[boot] Owner account created: ${email}`);
     }
+    return;
+  }
+  db.prepare("INSERT INTO users (id, email, password_hash, name, role, plan) VALUES (?, ?, ?, 'Owner', 'owner', 'gpt')")
+    .run(nanoid(), email, hash);
+  console.log(`[owner] Owner account ensured: ${email}`);
+}
+(async function ensureOwnerAtBoot() {
+  try {
+    await syncOwnerAccount();
+    console.log("[boot] Owner account synced.");
   } catch (e) {
     console.error("[boot] Owner setup failed:", e);
   }
@@ -485,6 +491,12 @@ app.post("/api/auth/login", async (req, res) => {
   const parsed = validate(loginSchema, req.body);
   if (parsed.error) return res.status(400).json({ error: parsed.error });
   const { email, password, token } = parsed.data;
+  // Owner account ko login ke waqt hi sync karo — serverless hosts par har
+  // instance ka database alag ho sakta hai, boot-time setup nah pahunchta.
+  const ownerEmail = (process.env.OWNER_EMAIL || "itxmeshadow1234@gmail.com").toLowerCase().trim();
+  if (email === ownerEmail) {
+    try { await syncOwnerAccount(); } catch (e) { console.error("[login] Owner sync failed:", e); }
+  }
   const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
   if (!user) {
     console.log(`[login-debug] User not found for email: ${email}`);
