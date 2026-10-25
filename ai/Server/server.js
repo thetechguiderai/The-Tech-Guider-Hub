@@ -424,7 +424,7 @@ const chatSchema = z.object({
   message: z.string().trim().min(1, "Message is required.").max(100000),
   modelId: z.string().trim().max(60).optional(),
   conversationId: z.string().trim().max(60).optional(),
-  mode: z.enum(["hub-help"]).optional(),
+  mode: z.enum(["hub-help", "buildx"]).optional(),
 });
 
 // System prompt for on-site help. The helper widget uses this so answers stay
@@ -455,6 +455,15 @@ const HUB_HELP_SYSTEM = [
   "The owner panel lives at /owner (10-digit access code).",
   "Never ask for passwords, card numbers or OTPs. Point users to the official YouTube channel for video content.",
 ].join("\n");
+const BUILDX_SYSTEM = [
+  "You are BuildX — the build & code mode of The Tech Guider AI (model: Guider Astron).",
+  "You help users BUILD things: websites, apps, scripts, games and small tools.",
+  "Always give complete, working, copy-pasteable code with short step-by-step explanation.",
+  "Prefer HTML/CSS/JS single-file answers so beginners can run them instantly.",
+  "Reply in the same language the user used (English, Urdu or Roman Urdu). Be practical and confident.",
+  "If the request is vague, pick sensible defaults and start building instead of asking many questions.",
+].join("\n");
+
 const imageSchema = z.object({
   prompt: z.string().trim().min(1, "Prompt is required.").max(4000),
 });
@@ -1105,6 +1114,7 @@ app.post("/api/chat", async (req, res) => {
   if (parsed.error) return res.status(400).json({ error: parsed.error });
   const { message, modelId = "guider-astron", conversationId, mode } = parsed.data;
   const hubHelp = mode === "hub-help";
+  const buildX = mode === "buildx";
 
   const model = modelConfig(modelId);
   if (!model) return res.status(400).json({ error: "Unknown model selected." });
@@ -1144,7 +1154,7 @@ app.post("/api/chat", async (req, res) => {
 
   try {
     const reply = await callProvider(model.provider, model.model, [
-      { role: "system", content: hubHelp ? HUB_HELP_SYSTEM : "You are The Tech Guider Hub Helper AI (model: Guider Astron), a helpful assistant of The Tech Guider Hub." },
+      { role: "system", content: hubHelp ? HUB_HELP_SYSTEM : (buildX ? BUILDX_SYSTEM : "You are The Tech Guider AI (model: Guider Astron), a helpful tech assistant made by The Tech Guider Hub.") },
       ...history,
       { role: "user", content: message },
     ]);

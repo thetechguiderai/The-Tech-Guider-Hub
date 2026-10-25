@@ -97,7 +97,7 @@ function AuthPanel({ onAuthed, onBack }) {
         <div className="aiw-auth-logo">
           <Icon.ai size={26} />
         </div>
-        <h1 className="aiw-auth-title">The Tech Guider Hub Helper AI</h1>
+        <h1 className="aiw-auth-title">The Tech Guider AI</h1>
         <p className="aiw-auth-sub">
           {mode === 'login' ? 'Sign in to chat with Guider Astron and keep your history.' : 'Create an account to keep your chat history.'}
         </p>
@@ -187,7 +187,7 @@ function Message({ msg, onCopy, onRetry }) {
 
 /* ---------- workspace ---------- */
 export default function AIWorkspace() {
-  useMeta('The Tech Guider Hub Helper AI — The Tech Guider Hub', 'The Tech Guider Hub Helper AI (Guider Astron): free chat help for pages, tools and content ideas inside the Hub.');
+  useMeta('The Tech Guider AI — The Tech Guider Hub', 'The Tech Guider AI (Guider Astron): free AI assistant with BuildX mode — chat, code and build anything for the Hub.');
   const { conversationId } = useParams();
   const navigate = useNavigate();
 
@@ -203,6 +203,12 @@ export default function AIWorkspace() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showAuthPanel, setShowAuthPanel] = useState(false);
   const [oauthNotice, setOauthNotice] = useState(null);
+  // Chat modes: 'chat' (normal) | 'buildx' (code/project builder persona).
+  const [mode, setMode] = useState('chat');
+  // Simple text/code file attachment ( 图片 vision abhi available nahi).
+  const [attached, setAttached] = useState(null); // { name, content }
+  const [attachNote, setAttachNote] = useState('');
+  const fileInputRef = useRef(null);
 
   const abortRef = useRef(null);
   const scrollRef = useRef(null);
@@ -328,20 +334,32 @@ export default function AIWorkspace() {
     async (text, { isRetry = false } = {}) => {
       const prompt = String(text ?? '').trim();
       if (!prompt || sending) return;
-      lastPromptRef.current = prompt;
+      // BuildX mode goes to the server as a separate persona; attached file
+      // content is inlined as text so text models can genuinely use it.
+      const fileSuffix = attached
+        ? `\n\n--- attached file: ${attached.name} ---\n${attached.content}`
+        : '';
+      const fullPrompt = prompt + fileSuffix;
+      lastPromptRef.current = fullPrompt;
 
       // Optimistically show the user turn (skip duplicating on retry).
       setMessages((prev) => {
         const base = isRetry && prev.length && prev[prev.length - 1].error ? prev.slice(0, -1) : prev;
-        return [...base, { role: 'user', content: prompt }, { role: 'assistant', content: 'Thinking…', pending: true }];
+        return [...base, { role: 'user', content: isRetry ? prompt : prompt + (attached ? `\n\n📎 ${attached.name}` : ''), file: isRetry ? undefined : attached?.name }, { role: 'assistant', content: 'Thinking…', pending: true }];
       });
       setInput('');
+      setAttached(null);
       setSending(true);
       abortRef.current = new AbortController();
 
       try {
         const data = await aiApi.chat(
-          { message: prompt, modelId: modelId || undefined, conversationId: conversationId || undefined },
+          {
+            message: fullPrompt,
+            modelId: modelId || undefined,
+            conversationId: conversationId || undefined,
+            mode: mode === 'buildx' ? 'buildx' : undefined,
+          },
           abortRef.current.signal
         );
         setMessages((prev) => {
@@ -364,12 +382,46 @@ export default function AIWorkspace() {
         abortRef.current = null;
       }
     },
-    [conversationId, modelId, navigate, loadConversations, loadUsage, sending]
+    [conversationId, modelId, navigate, loadConversations, loadUsage, sending, mode, attached]
   );
 
   function stop() {
     if (abortRef.current) abortRef.current.abort();
   }
+
+  // --- Attach files (text/code only — image vision abhi available nahi) ------
+  const TEXT_EXTS = /\.(txt|md|js|mjs|cjs|jsx|ts|tsx|json|html|htm|css|py|java|c|cpp|h|cs|php|rb|go|rs|sql|sh|bat|yml|yaml|xml|csv|ini|cfg|log|env)$/i;
+  function onPickFile(e) {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    if (f.type.startsWith('image/')) {
+      setAttachNote('Image files abhi support nahi (vision nahi hai) — text/code file attach karein.');
+      setTimeout(() => setAttachNote(''), 3500);
+      return;
+    }
+    if (f.size > 200 * 1024) {
+      setAttachNote('File 200KB se bari hai — choti text/code file attach karein.');
+      setTimeout(() => setAttachNote(''), 3500);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const isText = TEXT_EXTS.test(f.name) || (f.type || '').startsWith('text/');
+      if (!isText) {
+        setAttachNote('Sirf text/code files attach ho sakti hain.');
+        setTimeout(() => setAttachNote(''), 3500);
+        return;
+      }
+      const content = String(reader.result || '').slice(0, 150000);
+      setAttached({ name: f.name, content });
+    };
+    reader.readAsText(f);
+  }
+  function toggleBuildX() {
+    setMode((m) => (m === 'buildx' ? 'chat' : 'buildx'));
+  }
+
   function newChat() {
     if (sending) stop();
     navigate('/ai');
@@ -446,9 +498,22 @@ export default function AIWorkspace() {
         </div>
       )}
       <aside className="aiw-side">
+        <div className="aiw-side-brand">
+          <Icon.ai size={15} />
+          <span>The Tech Guider AI</span>
+        </div>
         <div className="aiw-side-head">
           <button type="button" className="btn btn-blue aiw-new" onClick={newChat}>
-            <Icon.plus size={16} /> New chat
+            <Icon.plus size={16} /> New Chat
+          </button>
+          <button
+            type="button"
+            className={`aiw-buildx${mode === 'buildx' ? ' on' : ''}`}
+            onClick={toggleBuildX}
+            title="BuildX: code aur projects banane wala mode"
+          >
+            <Icon.tool size={15} /> BuildX
+            <span className="aiw-buildx-tag">{mode === 'buildx' ? 'ON' : 'OFF'}</span>
           </button>
         </div>
         <div className="aiw-convs">
@@ -469,19 +534,28 @@ export default function AIWorkspace() {
           ))}
         </div>
         <div className="aiw-side-foot">
-          <Link to="/ai/plans" className="aiw-side-link" onClick={() => setSidebarOpen(false)}>
-            <Icon.star size={15} /> Plans &amp; usage
-          </Link>
           {user ? (
             <div className="aiw-side-user">
-              <div className="aiw-side-name">{user.name || user.email}</div>
-              <button type="button" className="aiw-side-link" onClick={signOut}>
-                <Icon.logout size={15} /> Sign out
-              </button>
+              <Link to="/ai/settings" className="aiw-user-chip" title="User Settings">
+                {user.avatar ? (
+                  <img src={user.avatar} alt="" />
+                ) : (
+                  <span className="aiw-user-initial">{(user.name || user.email || 'U').trim().charAt(0).toUpperCase()}</span>
+                )}
+                <span className="aiw-side-name">{user.name || user.email}</span>
+              </Link>
+              <div className="aiw-side-user-actions">
+                <Link to="/ai/plans" className="aiw-side-link" onClick={() => setSidebarOpen(false)}>
+                  <Icon.star size={15} /> Plans
+                </Link>
+                <button type="button" className="aiw-side-link" onClick={signOut}>
+                  <Icon.logout size={15} /> Sign out
+                </button>
+              </div>
             </div>
           ) : (
-            <button type="button" className="aiw-side-link" onClick={() => setSidebarOpen(false)}>
-              <Icon.profile size={15} /> Guest mode
+            <button type="button" className="aiw-side-link" onClick={() => setShowAuthPanel(true)}>
+              <Icon.profile size={15} /> Sign in / Guest mode
             </button>
           )}
         </div>
@@ -528,19 +602,35 @@ export default function AIWorkspace() {
               {loadingConv && <div className="aiw-loading-inline"><div className="spinner" /> Loading conversation…</div>}
               {!loadingConv && messages.length === 0 && (
                 <div className="aiw-empty">
-                  <div className="aiw-empty-icon"><Icon.ai size={26} /></div>
-                  <h2>How can I help you today?</h2>
-                  <p>
-                    Ask about tech, coding, gaming, your hub content or anything else. {user ? 'Your chats are saved.' : 'Sign in to save your chats and unlock more models.'}
-                  </p>
+                  <div className={`aiw-bubble${mode === 'buildx' ? ' buildx' : ''}`}>
+                    {mode === 'buildx' ? (
+                      <>
+                        <strong>BuildX mode ON 🛠</strong>
+                        <span>Batao kya banana hai — website, game, script, tool?</span>
+                      </>
+                    ) : (
+                      <>
+                        <strong>Ask Me Anything</strong>
+                        <span>Tech, coding, gaming, YouTube — kuch bhi poochein!</span>
+                      </>
+                    )}
+                  </div>
                   <div className="aiw-suggests">
-                    {[
-                      'Yahan kya milta hai? (site tour)',
-                      'Free Fire sensitivity kaise set karun?',
-                      'Minecraft server setup checklist do',
-                      'YouTube video ke liye script plan karo',
-                      'HTML/JS code likhne mein madad do',
-                    ].map((s) => (
+                    {(mode === 'buildx'
+                      ? [
+                          'Ek personal portfolio website bana do',
+                          'Tic-tac-toe game HTML/JS mein banao',
+                          'YouTube subscriber counter script do',
+                          'Simple calculator app banao',
+                        ]
+                      : [
+                          'Yahan kya milta hai? (site tour)',
+                          'Free Fire sensitivity kaise set karun?',
+                          'Minecraft server setup checklist do',
+                          'YouTube video ke liye script plan karo',
+                          'HTML/JS code likhne mein madad do',
+                        ]
+                    ).map((s) => (
                       <button key={s} type="button" className="aiw-suggest" onClick={() => send(s)}>{s}</button>
                     ))}
                   </div>
@@ -576,24 +666,52 @@ export default function AIWorkspace() {
                 className="aiw-composer"
                 onSubmit={(e) => { e.preventDefault(); send(input); }}
               >
-                <textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); }
-                  }}
-                  placeholder={sending ? 'Waiting for a response…' : 'Message The Tech Guider AI…'}
-                  rows={1}
-                  disabled={sending}
-                />
-                {sending ? (
-                  <button type="button" className="btn btn-ghost aiw-send" onClick={stop} title="Stop">
-                    Stop
+                {attached && (
+                  <div className="aiw-attach-chip" title={attached.name.slice(0, 100)}>
+                    <>📎 {attached.name}</>
+                    <button type="button" onClick={() => setAttached(null)} aria-label="Remove attachment">✕</button>
+                  </div>
+                )}
+                <div className="aiw-input-row">
+                  <button
+                    type="button"
+                    className="aiw-attach-btn"
+                    onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                    title="Text/code file attach karein"
+                  >
+                    <Icon.plus size={17} />
                   </button>
-                ) : (
-                  <button type="submit" className="btn btn-blue aiw-send" disabled={!input.trim()} title="Send">
-                    <Icon.arrow size={18} />
-                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".txt,.md,.js,.mjs,.cjs,.jsx,.ts,.tsx,.json,.html,.htm,.css,.py,.java,.c,.cpp,.h,.cs,.php,.rb,.go,.rs,.sql,.sh,.bat,.yml,.yaml,.xml,.csv,.ini,.cfg,.log,.env,text/*"
+                    onChange={onPickFile}
+                    style={{ display: 'none' }}
+                  />
+                  <textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); }
+                    }}
+                    placeholder={mode === 'buildx' ? 'BuildX: kya banana hai? Website, game, tool…' : (sending ? 'Waiting for a response…' : 'Message The Tech Guider AI…')}
+                    rows={1}
+                    disabled={sending}
+                  />
+                  {sending ? (
+                    <button type="button" className="btn btn-ghost aiw-send" onClick={stop} title="Stop">
+                      Stop
+                    </button>
+                  ) : (
+                    <button type="submit" className="btn btn-blue aiw-send" disabled={!input.trim()} title="Send">
+                      <span className="aiw-send-label hide-mobile">Send</span>
+                      <Icon.arrow size={17} />
+                    </button>
+                  )}
+                </div>
+                {attachNote && <div className="aiw-attach-note">⚠ {attachNote}</div>}
+                {mode === 'buildx' && !attachNote && (
+                  <div className="aiw-attach-note ok">🛠 BuildX ON — ab aap ka AI sirf building/code pe focus karega.</div>
                 )}
               </form>
               <div className="aiw-foot">
