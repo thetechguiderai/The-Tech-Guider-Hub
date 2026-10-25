@@ -15,6 +15,7 @@ import TikTok from './pages/TikTok';
 import VideoEditingPackages from './pages/VideoEditingPackages';
 import AIWorkspace from './pages/ai/AIWorkspace';
 import AIPlans from './pages/ai/AIPlans';
+import AIUnlock from './pages/ai/AIUnlock';
 import UserSettings from './pages/ai/UserSettings';
 import Auth from './pages/Auth';
 import Analytics from './pages/Analytics';
@@ -73,6 +74,7 @@ export default function App() {
         <Route path="/ai" element={<Layout><AIWorkspace /></Layout>} />
         <Route path="/ai/chat/:conversationId" element={<Layout><AIWorkspace /></Layout>} />
         <Route path="/ai/plans" element={<Layout><AIPlans /></Layout>} />
+        <Route path="/ai/unlock/:modelId" element={<Layout><AIUnlock /></Layout>} />
         <Route path="/ai/settings" element={<Layout><UserSettings /></Layout>} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/analytics" element={<Layout><Analytics /></Layout>} />

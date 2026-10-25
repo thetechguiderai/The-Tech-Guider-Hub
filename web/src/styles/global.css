@@ -2816,6 +2816,35 @@ p {
   .tt-stats-row { gap: 12px; }
 }
 
+/* unlock page */
+.aiw-unlock-page { display: grid; place-items: center; min-height: calc(100vh - 140px); padding: 40px 16px; }
+.aiw-unlock-card { width: 100%; max-width: 520px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 30px; }
+.aiw-unlock-back { display: inline-block; margin-bottom: 14px; }
+.aiw-unlock-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(225, 29, 72, .14); border: 1px solid rgba(225, 29, 72, .4); color: #fb7185; font-size: 12.5px; font-weight: 700; border-radius: 999px; padding: 5px 12px; margin-bottom: 10px; }
+.aiw-unlock-card h1 { font-size: 24px; letter-spacing: -.02em; }
+.aiw-unlock-meta { color: var(--muted2, #b5b5b5); font-size: 14px; margin-top: 8px; }
+.aiw-unlock-form { display: flex; flex-direction: column; gap: 14px; margin-top: 18px; }
+.aiw-unlock-form label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted2, #c9c9c9); }
+.aiw-unlock-form select, .aiw-unlock-form input { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); padding: 11px 13px; font-size: 14.5px; }
+.aiw-unlock-form input:focus, .aiw-unlock-form select:focus { outline: none; border-color: #e11d48; box-shadow: 0 0 0 3px rgba(225, 29, 72, .12); }
+.aiw-unlock-instructions { background: var(--bg); border: 1px dashed var(--border); border-radius: var(--radius-sm); padding: 12px 14px; font-size: 13px; color: var(--muted2, #c9c9c9); }
+.aiw-unlock-proof-btn { background: var(--bg); border: 1px dashed var(--border-strong, var(--border)); color: var(--text); border-radius: var(--radius-sm); padding: 11px 13px; font-size: 14px; cursor: pointer; text-align: left; }
+.aiw-unlock-proof-btn:hover { border-color: rgba(225, 29, 72, .55); color: #fb7185; }
+.aiw-unlock-submit { width: 100%; background: linear-gradient(135deg, #f43f5e, #e11d48 70%); color: #fff; border: none; border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 16px rgba(225, 29, 72, .3); }
+.aiw-unlock-submit:hover { filter: brightness(1.08); }
+.aiw-unlock-submit:disabled { opacity: .5; cursor: not-allowed; filter: none; }
+.aiw-unlock-note { font-size: 12.5px; color: var(--muted3); }
+.aiw-unlock-note.ok { color: var(--success); font-size: 14px; font-weight: 600; }
+.aiw-unlock-success { background: rgba(74, 222, 128, .1); border: 1px solid rgba(74, 222, 128, .3); color: #bbf7d0; border-radius: var(--radius-sm); padding: 10px 12px; font-size: 13px; }
+
+/* plans page unlock button */
+.aiw-plan-unlock { display: inline-flex; align-items: center; gap: 8px; width: 100%; justify-content: center; }
+
+@media (max-width: 720px) {
+  .aiw { height: calc(100vh - 56px); }
+  .aiw-hero-title { font-size: clamp(32px, 9vw, 44px); }
+}
+
 /* ============================================================
    THE TECH GUIDER AI — official Hub integration polish + help
    widget (Appended Oct 2026). New classes: aih-*, aiw-typing.

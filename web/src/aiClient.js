@@ -40,6 +40,16 @@ export const aiApi = {
   updateSettings: (body) => aiRequest('/ai/api/user/settings', { method: 'PATCH', body: JSON.stringify(body) }),
   providerStatus: () => aiRequest('/ai/api/providers/status'),
   billingMethods: () => aiRequest('/ai/api/billing/methods'),
+  modelCheckout: (body) => aiRequest('/ai/api/billing/checkout', { method: 'POST', body: JSON.stringify(body) }),
+  paymentProofUpload: async (file) => {
+    const fd = new FormData();
+    fd.append('proof', file);
+    const res = await fetch('/ai/api/billing/proof', { method: 'POST', credentials: 'same-origin', body: fd });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Proof upload failed.');
+    return data;
+  },
+  payments: () => aiRequest('/ai/api/payments'),
   conversations: () => aiRequest('/ai/api/conversations'),
   conversation: (id) => aiRequest(`/ai/api/conversations/${id}`),
   deleteConversation: (id) => aiRequest(`/ai/api/conversations/${id}`, { method: 'DELETE' }),

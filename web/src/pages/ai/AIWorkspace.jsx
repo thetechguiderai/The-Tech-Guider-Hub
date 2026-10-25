@@ -245,12 +245,9 @@ export default function AIWorkspace() {
   const lastPromptRef = useRef('');
 
   const usableModels = useMemo(() => {
-    const loggedIn = Boolean(user);
-    return models.filter((m) => {
-      if (loggedIn) return true;
-      return m.tier === 'guest'; // guests may only use guest-tier models
-    });
-  }, [models, user]);
+    // Paid models stay visible (locked) so users can discover them and unlock.
+    return models;
+  }, [models]);
 
   const activeModel = useMemo(() => models.find((m) => m.id === modelId) || null, [models, modelId]);
 
@@ -493,7 +490,7 @@ export default function AIWorkspace() {
   function onSelectModel(e) {
     const next = usableModels.find((m) => m.id === e.target.value);
     if (next && next.locked) {
-      navigate('/ai/plans');
+      navigate(`/ai/unlock/${next.id}`);
       return;
     }
     setModelId(e.target.value);
@@ -603,17 +600,25 @@ export default function AIWorkspace() {
           <div className="aiw-head-right">
             <div className="aiw-model-wrap">
               <span className="aiw-model-ico"><Icon.settings size={15} /></span>
-              <select className="aiw-model" value={modelId} onChange={onSelectModel} aria-label="Select Models">
+              <select
+                className="aiw-model"
+                value={mode === 'buildx' ? 'guider-buildx' : modelId}
+                onChange={onSelectModel}
+                disabled={mode === 'buildx'}
+                aria-label="Select Models"
+              >
                 {usableModels.length === 0 && <option value="">No models available</option>}
                 {usableModels.map((m) => {
                   const note = m.enabled === false
-                    ? ' · Unavailable'
+                    ? ' — Unavailable'
                     : m.locked
-                      ? (m.tier === 'guest' ? ' · Guest only' : ' · Upgrade required')
-                      : '';
+                      ? ` — 🔒 Rs ${m.price} unlock`
+                      : m.tier === 'guest' && m.dailyLimit > 0
+                        ? ` — Free ${m.dailyLimit}/day`
+                        : '';
                   return (
-                    <option key={m.id} value={m.id} disabled={m.locked || m.enabled === false}>
-                      {m.name}{note}
+                    <option key={m.id} value={m.id} disabled={m.enabled === false}>
+                      {`${m.badge} ${m.name}${m.id === 'guider-buildx' && !m.unlocked ? ' — Free 250/month' : ''}${note}`}
                     </option>
                   );
                 })}

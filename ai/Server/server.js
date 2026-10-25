@@ -115,6 +115,7 @@ CREATE TABLE IF NOT EXISTS promo_redemptions (id TEXT PRIMARY KEY, promo_id TEXT
 CREATE TABLE IF NOT EXISTS payment_methods (id TEXT PRIMARY KEY, name TEXT NOT NULL, instructions TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, proof_required INTEGER NOT NULL DEFAULT 1, created_at TEXT DEFAULT (datetime('now')));
 CREATE TABLE IF NOT EXISTS roles (id TEXT PRIMARY KEY, name TEXT UNIQUE NOT NULL, permissions TEXT NOT NULL DEFAULT '[]', system INTEGER NOT NULL DEFAULT 0, created_at TEXT DEFAULT (datetime('now')));
 CREATE TABLE IF NOT EXISTS payment_proofs (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, filename TEXT, mimetype TEXT, size INTEGER, data TEXT, created_at TEXT DEFAULT (datetime('now')));
+CREATE TABLE IF NOT EXISTS model_unlocks (user_id TEXT NOT NULL, model_id TEXT NOT NULL, payment_id TEXT, created_at TEXT DEFAULT (datetime('now')), PRIMARY KEY (user_id, model_id));
 `);
 // Non-destructive migration for accounts created through Google OAuth.
 for (const statement of [
@@ -140,6 +141,7 @@ for (const statement of [
   "ALTER TABLE payments ADD COLUMN promo_id TEXT",
   "ALTER TABLE payments ADD COLUMN reviewed_at TEXT",
   "ALTER TABLE payments ADD COLUMN reviewed_by TEXT",
+  "ALTER TABLE payments ADD COLUMN model_id TEXT",
   "ALTER TABLE announcements ADD COLUMN type TEXT NOT NULL DEFAULT 'info'",
   "ALTER TABLE announcements ADD COLUMN active INTEGER NOT NULL DEFAULT 1",
   "ALTER TABLE announcements ADD COLUMN starts_at TEXT",
@@ -150,12 +152,20 @@ for (const statement of [
 try { db.exec("CREATE UNIQUE INDEX IF NOT EXISTS users_oauth_identity ON users(oauth_provider, oauth_subject)"); } catch { /* Existing data can be repaired by an admin. */ }
 
 // ---------- MODELS (The Tech Guider AI) ----------
-// Single flagship model. tier "guest" now means "open to everyone" — signed-in
-// users and guests share the same helper, limits are enforced per usage key.
-const VALID_OPENROUTER_FREE_MODEL = "recursive/flint-v1.0:free";
+// All models run through OpenRouter's free models (zero provider cost). Paid
+// models are one-time per-model unlocks (payments table + owner approval).
+// tier "guest" = open to everyone; tier "paid" = needs a one-time unlock.
 const MODELS = {
-  "guider-astron": { name: "Guider Astron", tier: "guest", provider: "openrouter", model: VALID_OPENROUTER_FREE_MODEL, dailyLimit: 30, desc: "The Tech Guider AI — chat, Hub navigation, content ideas aur support. Sab ke liye free." },
+  "guider-astron":   { name: "Guider Astron",   badge: "🤝", tier: "guest", provider: "openrouter", model: "recursive/flint-v1.0:free",        dailyLimit: 55, price: null,  desc: "Hub Helper — The Tech Guider AI se chat, Hub navigation aur support. Sab ke liye free." },
+  "guider-paradise": { name: "Guider Paradise", badge: "🕊️", tier: "guest", provider: "openrouter", model: "nvidia/nemotron-3.5-super-vl:free", dailyLimit: 50, price: null,  desc: "The Tech Guider AI ka FREE flagship — mazedar general chat, ideas aur tech talk." },
+  "guider-lite":     { name: "Guider Lite",     badge: "🪶", tier: "paid",  provider: "openrouter", model: "xingchen-agi/xing4.0-29b-a4b:free", dailyLimit: 0,  price: 250,   desc: "Sab se tez chote jawab — casual, mobile-friendly, emoji style. Ek dafa kharid = unlimited." },
+  "guider-blaze":    { name: "Guider Blaze",    badge: "⚡", tier: "paid",  provider: "openrouter", model: "nvidia/nemotron-3.5-lightning:free", dailyLimit: 0, price: 399, desc: "Lightning-fast quality jawab — research aur comparison mein tez. Ek dafa kharid = unlimited." },
+  "guider-titan":    { name: "Guider Titan",    badge: "📚", tier: "paid",  provider: "openrouter", model: "dots-studio/dots-3-note-preview:free", dailyLimit: 0, price: 499, desc: "Lambe likhaayi ka king — essays, reports, YouTube scripts. 512K context. Ek dafa kharid = unlimited." },
+  "guider-deep":     { name: "Guider Deep",     badge: "🧠", tier: "paid",  provider: "openrouter", model: "nvidia/nemotron-3-ultra-550b-a55b:free", dailyLimit: 0, price: 599, desc: "Sab se gehra sochne wala — math, logic, expert analysis. Ek dafa kharid = unlimited." },
+  "guider-buildx":   { name: "Guider BuildX",   badge: "💻", tier: "guest", provider: "openrouter", model: "poolside/laguna-s-2.1:free",       dailyLimit: 0,  price: 799,  desc: "Full-stack website designer (BuildX mode). FREE: 250 msg/month — ya paid unlock = unlimited." },
 };
+const BUILDX_MONTHLY_FREE_LIMIT = 250;
+const MODEL_IDS = Object.keys(MODELS);
 
 // ---------- PLANS (info only — the helper is free; checkout stays closed) ----------
 const plan = (id, name, monthly, yearly, unlocks, desc) => ({ id, name, monthly, yearly, unlocks, desc });
@@ -165,6 +175,8 @@ const PLANS = [
 for (const [id, model] of Object.entries(MODELS)) {
   db.prepare("INSERT OR IGNORE INTO owner_model_settings (model_id, enabled, tier, daily_limit) VALUES (?, 1, ?, ?)").run(id, model.tier, model.dailyLimit);
 }
+// One-time backfill of changed defaults (never stomps owner-set values).
+db.prepare("UPDATE owner_model_settings SET daily_limit = 55 WHERE model_id = 'guider-astron' AND daily_limit = 30").run();
 for (const item of PLANS) {
   db.prepare("INSERT OR IGNORE INTO owner_plan_settings (plan_id, monthly, yearly, enabled, features) VALUES (?, ?, ?, 1, ?)")
     .run(item.id, item.monthly, item.yearly, JSON.stringify(item.unlocks));
@@ -320,11 +332,18 @@ function publicUser(u) {
 function hasGuiderGptTrial(user) {
   return Boolean(user?.trial_expires_at && new Date(user.trial_expires_at).getTime() > Date.now());
 }
+function modelUnlocked(userId, modelId) {
+  return Boolean(db.prepare("SELECT 1 FROM model_unlocks WHERE user_id = ? AND model_id = ?").get(userId, modelId));
+}
 function canUseModel(user, modelId) {
   const model = modelConfig(modelId);
   if (!model?.enabled) return false;
   if (!user) return false;
-  return user.role === "owner" || planUnlocksModel(user.plan, modelId);
+  if (user.role === "owner") return true;
+  // Per-model one-time unlocks replace the old plan-based gating.
+  if (modelUnlocked(user.id, modelId)) return true;
+  // Legacy: an old approved plan payment may still carry a model unlock.
+  return planUnlocksModel(user.plan, modelId) && model.tier === "paid";
 }
 function isConfiguredOwner(user) {
   const email = (process.env.OWNER_EMAIL || "").toLowerCase().trim();
@@ -456,8 +475,8 @@ const HUB_HELP_SYSTEM = [
   "Never ask for passwords, card numbers or OTPs. Point users to the official YouTube channel for video content.",
 ].join("\n");
 const BUILDX_SYSTEM = [
-  "You are BuildX — the build & code mode of The Tech Guider AI (model: Guider Astron).",
-  "You help users BUILD things: websites, apps, scripts, games and small tools.",
+  "You are BuildX — the build & code mode of The Tech Guider AI (model: Guider BuildX).",
+  "You are the dedicated full-stack website designer model: you build websites, web apps, scripts, games and small tools from scratch.",
   "Always give complete, working, copy-pasteable code with short step-by-step explanation.",
   "Prefer HTML/CSS/JS single-file answers so beginners can run them instantly.",
   "Reply in the same language the user used (English, Urdu or Roman Urdu). Be practical and confident.",
@@ -476,6 +495,10 @@ const checkoutSchema = quoteSchema.extend({
   paymentMethodId: z.string().trim().min(1, "Choose an available payment method."),
   transactionId: z.string().trim().min(1, "A transaction/reference ID is required.").max(120),
   proofReference: z.string().trim().max(1000).optional(),
+});
+// Per-model one-time unlock checkout: a fixed price, no promos/discounts.
+const modelCheckoutSchema = checkoutSchema.omit({ planId: true, interval: true, promoCode: true }).extend({
+  modelId: z.string().trim().min(1, "Choose a model."),
 });
 
 // ---------- AUTH ROUTES ----------
@@ -612,14 +635,25 @@ app.patch("/api/auth/me", requireAuth, (req, res) => {
 });
 
 // ---------- MODELS / PLANS ----------
+function buildxMonthlyUsed(userId) {
+  const month = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+  return db.prepare("SELECT COALESCE(SUM(count),0) AS count FROM usage_log WHERE model = 'guider-buildx' AND day LIKE ?").get(`${month}%`).count;
+}
 app.get("/api/models", (req, res) => {
   const user = getUser(req);
   const list = Object.entries(MODELS).map(([id]) => {
     const m = modelConfig(id);
+    const unlocked = Boolean(user) && (user.role === "owner" || modelUnlocked(user.id, id));
     let locked = false;
     if (!m.enabled) locked = true;
-    if (m.tier === "paid") locked = !canUseModel(user, id);
-    return { id, name: m.name, tier: m.tier, desc: m.desc, locked, enabled: m.enabled, dailyLimit: m.dailyLimit };
+    if (m.tier === "paid") locked = !unlocked;
+    return {
+      id, name: m.name, badge: m.badge, tier: m.tier, desc: m.desc, locked, enabled: m.enabled,
+      dailyLimit: m.dailyLimit, price: m.price,
+      buildxMonthlyLimit: id === "guider-buildx" ? BUILDX_MONTHLY_FREE_LIMIT : undefined,
+      buildxMonthlyUsed: id === "guider-buildx" && user ? buildxMonthlyUsed(user.id) : undefined,
+      unlocked,
+    };
   });
   res.json({ models: list });
 });
@@ -630,7 +664,7 @@ app.get("/api/usage", requireAuth, (req, res) => {
   const day = new Date().toISOString().slice(0, 10);
   const used = db.prepare("SELECT model, count FROM usage_log WHERE user_id = ? AND day = ?").all(req.user.id, day);
   const models = used.map(row => { const model = modelConfig(row.model); const limit = model?.dailyLimit || 0; return { modelId: row.model, name: model?.name || row.model, used: row.count, limit, remaining: Math.max(0, limit - row.count) }; });
-  res.json({ day, models, total: models.reduce((sum, item) => sum + item.used, 0) });
+  res.json({ day, models, total: models.reduce((sum, item) => sum + item.used, 0), buildxMonthlyUsed: buildxMonthlyUsed(req.user.id) });
 });
 
 app.get("/api/announcements", requireAuth, (req, res) => {
@@ -675,16 +709,38 @@ app.post("/api/billing/quote", requireAuth, (req, res) => {
   catch (error) { res.status(400).json({ error: error.message }); }
 });
 app.post("/api/billing/checkout", requireAuth, (req, res) => {
-  const parsed = validate(checkoutSchema, req.body);
+  // Two checkout flavours: plan subscription (legacy) and per-model one-time unlock.
+  const isModel = Boolean(req.body?.modelId);
+  const parsed = validate(isModel ? modelCheckoutSchema : checkoutSchema, req.body);
   if (parsed.error) return res.status(400).json({ error: parsed.error });
   try {
-    const { planId, interval, promoCode, paymentMethodId, transactionId, proofReference } = parsed.data;
+    const { paymentMethodId, transactionId, proofReference } = parsed.data;
     const method = db.prepare("SELECT * FROM payment_methods WHERE id=? AND active=1").get(paymentMethodId);
     if (!method) throw new Error("Choose an available payment method.");
     if (method.proof_required && !proofReference?.trim()) throw new Error("Payment proof reference is required for this method.");
-    const q = paymentQuote(req.user, planId, interval, promoCode), id = nanoid();
-    db.prepare("INSERT INTO payments (id,user_id,plan,amount,status,original_amount,discount_amount,final_amount,payment_method_id,transaction_id,proof_reference,billing_interval,promo_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)").run(id, req.user.id, planId, q.finalAmount, "pending", q.originalAmount, q.discountAmount, q.finalAmount, method.id, transactionId.trim(), String(proofReference || "").trim().slice(0, 1000), interval, q.promo?.id || null);
-    if (q.promo) db.prepare("INSERT INTO promo_redemptions (id,promo_id,user_id,payment_id) VALUES (?,?,?,?)").run(nanoid(), q.promo.id, req.user.id, id);
+    const id = nanoid();
+    let amount, planLabel, modelId = null;
+    if (isModel) {
+      ({ modelId } = parsed.data);
+      const model = modelConfig(modelId);
+      if (!model) throw new Error("Unknown model.");
+      if (model.tier !== "paid" || model.price == null) throw new Error("This model is not a paid model — kamai ke liye per-model unlock chahiye.");
+      if (modelUnlocked(req.user.id, modelId)) throw new Error("Ye model already aap ke paas unlock hai.");
+      amount = model.price;
+      planLabel = `model:${modelId}`;
+    } else {
+      const { planId, interval, promoCode } = parsed.data;
+      const q = paymentQuote(req.user, planId, interval, promoCode);
+      amount = q.finalAmount; planLabel = planId;
+      const extra = q.promo ? " ,promo_id" : "";
+      db.prepare(`INSERT INTO payments (id,user_id,plan,amount,status,original_amount,discount_amount,final_amount,payment_method_id,transaction_id,proof_reference,billing_interval${extra}) VALUES (?,?,?,?,?,?,?,?,?,?,?,?${q.promo ? ",?" : ""})`)
+        .run(id, req.user.id, planId, amount, "pending", q.originalAmount, q.discountAmount, q.finalAmount, method.id, transactionId.trim(), String(proofReference || "").trim().slice(0, 1000), interval, ...(q.promo ? [q.promo.id] : []));
+      if (q.promo) db.prepare("INSERT INTO promo_redemptions (id,promo_id,user_id,payment_id) VALUES (?,?,?,?)").run(nanoid(), q.promo.id, req.user.id, id);
+      res.status(201).json({ payment: db.prepare("SELECT * FROM payments WHERE id=?").get(id) });
+      return;
+    }
+    db.prepare("INSERT INTO payments (id,user_id,plan,amount,status,final_amount,payment_method_id,transaction_id,proof_reference,model_id) VALUES (?,?,?,?,?,?,?,?,?,?)")
+      .run(id, req.user.id, planLabel, amount, "pending", amount, method.id, transactionId.trim(), String(proofReference || "").trim().slice(0, 1000), modelId);
     res.status(201).json({ payment: db.prepare("SELECT * FROM payments WHERE id=?").get(id) });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
@@ -841,8 +897,18 @@ app.patch("/api/owner/payments/:id", requireOwner, async (req,res) => {
   if (payment.status !== 'pending' && status === 'approved') return res.status(409).json({ error:"Only pending payments can be approved." });
   if (status === 'refunded' && payment.status !== 'approved') return res.status(409).json({ error:"Only approved payments can be refunded." });
   if (payment.status !== 'pending' && status === 'rejected') return res.status(409).json({ error:"Only pending payments can be rejected." });
-  if (status === 'approved') db.prepare("UPDATE users SET plan=? WHERE id=?").run(payment.plan, payment.user_id);
-  if (status === 'refunded' && payment.status === 'approved') creditWallet(payment.user_id, Math.max(1, payment.final_amount || payment.amount || 0), 'refund', `Refund for payment ${payment.id}`, payment.id);
+  if (status === 'approved') {
+    if (payment.model_id) {
+      // Per-model one-time unlock: grant once, never demote the user's plan.
+      db.prepare("INSERT OR IGNORE INTO model_unlocks (user_id, model_id, payment_id) VALUES (?,?,?)").run(payment.user_id, payment.model_id, payment.id);
+    } else {
+      db.prepare("UPDATE users SET plan=? WHERE id=?").run(payment.plan, payment.user_id);
+    }
+  }
+  if (status === 'refunded' && payment.status === 'approved') {
+    if (payment.model_id) db.prepare("DELETE FROM model_unlocks WHERE user_id=? AND model_id=? AND payment_id=?").run(payment.user_id, payment.model_id, payment.id);
+    creditWallet(payment.user_id, Math.max(1, payment.final_amount || payment.amount || 0), 'refund', `Refund for payment ${payment.id}`, payment.id);
+  }
   db.prepare("UPDATE payments SET status=?,admin_note=?,reviewed_at=datetime('now'),reviewed_by=? WHERE id=?").run(status, String(adminNote || '').slice(0,1000), req.user.id, payment.id);
   audit(req.user.id, `payment.${status}`, payment.id, { userId:payment.user_id, plan:payment.plan, amount:payment.final_amount || payment.amount });
   // Notify the customer when their payment is reviewed. No-op without SMTP config.
@@ -907,6 +973,18 @@ function checkLimit(userId, modelId) {
   if (planLimit > 0) {
     const planUsed = db.prepare("SELECT COALESCE(SUM(count),0) AS count FROM usage_log WHERE user_id = ? AND day = ?").get(userId, day).count;
     if (planUsed >= planLimit) return { allowed: false, reason: `Daily plan limit reached (${planLimit}/day).` };
+  }
+  // BuildX free tier: monthly limit (paid unlock = unlimited, dailyLimit 0).
+  if (modelId === "guider-buildx" && !modelUnlocked(userId, modelId)) {
+    const month = day.slice(0, 7);
+    const monthRow = db.prepare("SELECT * FROM usage_log WHERE user_id = ? AND model = 'guider-monthly-marker' AND day = ?").get(userId, month);
+    const monthUsed = buildxMonthlyUsed(userId);
+    if (monthUsed >= BUILDX_MONTHLY_FREE_LIMIT) {
+      return { allowed: false, reason: `Free BuildX monthly limit reached (${BUILDX_MONTHLY_FREE_LIMIT}/month). Unlock Guider BuildX for unlimited.` };
+    }
+    if (monthRow) db.prepare("UPDATE usage_log SET count = count + 1 WHERE id = ?").run(monthRow.id);
+    else db.prepare("INSERT INTO usage_log (id, user_id, model, day, count) VALUES (?, ?, ?, ?, 1)").run(nanoid(), userId, "guider-monthly-marker", month);
+    return { allowed: true };
   }
   if (model.dailyLimit === 0) return { allowed: true };
   const row = db.prepare("SELECT * FROM usage_log WHERE user_id = ? AND model = ? AND day = ?").get(userId, modelId, day);
@@ -1115,17 +1193,21 @@ app.post("/api/chat", async (req, res) => {
   const { message, modelId = "guider-astron", conversationId, mode } = parsed.data;
   const hubHelp = mode === "hub-help";
   const buildX = mode === "buildx";
+  // BuildX mode always runs on the dedicated Guider BuildX model.
+  const effectiveModelId = buildX ? "guider-buildx" : modelId;
 
-  const model = modelConfig(modelId);
+  const model = modelConfig(effectiveModelId);
   if (!model) return res.status(400).json({ error: "Unknown model selected." });
 
   const user = getUser(req);
   if (user?.disabled) return res.status(403).json({ error: "This account has been disabled." });
+  // BuildX free tier is tracked per account, so sign-in is required.
+  if (buildX && !user) return res.status(401).json({ error: "BuildX use karne ke liye sign in karein." });
   if (maintenanceEnabled() && !isConfiguredOwner(user)) return res.status(503).json({ error: "The service is temporarily in maintenance mode." });
   if (!model.enabled) return res.status(503).json({ error: `${model.name} is temporarily unavailable.` });
-  // tier "guest" is the only tier now: open to signed-in users and guests alike.
-  if (model.tier === "paid" && !canUseModel(user, modelId)) {
-    return res.status(403).json({ error: `${model.name} requires an upgrade. Visit /plans.html.` });
+  // Paid models need a one-time per-model unlock (owner-approved payment).
+  if (model.tier === "paid" && !canUseModel(user, effectiveModelId)) {
+    return res.status(403).json({ error: `${model.name} locked hai. One-time unlock karein: /ai/unlock/${effectiveModelId}` });
   }
 
   const usageKey = user ? user.id : (req.cookies?.tg_guest || (() => {
@@ -1134,7 +1216,7 @@ app.post("/api/chat", async (req, res) => {
     return gid;
   })());
 
-  const limit = checkLimit(usageKey, modelId);
+  const limit = checkLimit(usageKey, effectiveModelId);
   if (!limit.allowed) return res.status(429).json({ error: limit.reason });
 
   // Conversation history (logged-in users only; hub-help chats stay ephemeral
@@ -1145,7 +1227,7 @@ app.post("/api/chat", async (req, res) => {
     if (conversationId) conv = db.prepare("SELECT * FROM conversations WHERE id = ? AND user_id = ?").get(conversationId, user.id);
     if (!conv) {
       const cid = nanoid();
-      db.prepare("INSERT INTO conversations (id, user_id, title, model) VALUES (?, ?, ?, ?)").run(cid, user.id, message.slice(0, 50), modelId);
+      db.prepare("INSERT INTO conversations (id, user_id, title, model) VALUES (?, ?, ?, ?)").run(cid, user.id, message.slice(0, 50), effectiveModelId);
       conv = db.prepare("SELECT * FROM conversations WHERE id = ?").get(cid);
     }
     history = db.prepare("SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY created_at ASC LIMIT 20").all(conv.id);
@@ -1158,7 +1240,7 @@ app.post("/api/chat", async (req, res) => {
       ...history,
       { role: "user", content: message },
     ]);
-    logRequest(user ? user.id : null, modelId, "success");
+    logRequest(user ? user.id : null, effectiveModelId, "success");;
 
     if (user && conv) {
       db.prepare("INSERT INTO messages (id, conversation_id, role, content) VALUES (?, ?, 'assistant', ?)").run(nanoid(), conv.id, reply);
@@ -1167,10 +1249,10 @@ app.post("/api/chat", async (req, res) => {
 
     res.json({ reply, remaining: limit.remaining, conversationId: hubHelp ? null : (conv?.id || null) });
   } catch (err) {
-    logRequest(user ? user.id : null, modelId, "error");
+    logRequest(user ? user.id : null, effectiveModelId, "error");;
     const failure = classifyProviderError(err, model);
     console.error(
-      `[chat] req=${req.id} model=${modelId} provider=${model.provider} code=${failure.code}:`,
+      `[chat] req=${req.id} model=${effectiveModelId} provider=${model.provider} code=${failure.code}:`,
       providerErrorText(err?.detail, err?.empty ? "empty provider response" : "provider failure")
     );
     res.status(failure.status).json({ error: failure.message, code: failure.code, requestId: req.id });

@@ -10,10 +10,11 @@ function money(amount) {
   return `Rs ${n.toLocaleString('en-PK')}`;
 }
 
+/* Models & Usage — the new direct-model view (no plan subscriptions).
+   Free models show daily limits; paid models show their one-time unlock price. */
 export default function AIPlans() {
-  useMeta('The Tech Guider AI Plans & Usage - The Tech Guider Hub', 'Guider Astron daily limit and your usage for The Tech Guider AI.');
+  useMeta('The Tech Guider AI Models & Usage - The Tech Guider Hub', 'All The Tech Guider AI models — Guider Paradise free daily, Guider BuildX free monthly, plus paid one-time unlocks.');
   const [state, setState] = useState({ loading: true, error: null });
-  const [plans, setPlans] = useState([]);
   const [models, setModels] = useState([]);
   const [user, setUser] = useState(null);
   const [usage, setUsage] = useState(null);
@@ -22,12 +23,10 @@ export default function AIPlans() {
   async function load() {
     setState({ loading: true, error: null });
     try {
-      const [plansRes, modelsRes, meRes] = await Promise.all([
-        aiApi.plans(),
+      const [modelsRes, meRes] = await Promise.all([
         aiApi.models(),
         aiApi.me().catch(() => ({ user: null })),
       ]);
-      setPlans(plansRes.plans || []);
       setModels(modelsRes.models || []);
       const u = meRes.user || null;
       setUser(u);
@@ -37,20 +36,19 @@ export default function AIPlans() {
       }
       setState({ loading: false, error: null });
     } catch (err) {
-      setState({ loading: false, error: err.message || 'Unable to load plans.' });
+      setState({ loading: false, error: err.message || 'Unable to load models.' });
     }
   }
   useEffect(() => { load(); }, []);
 
-  const modelName = (id) => models.find((m) => m.id === id)?.name || id;
   const billingAvailable = Boolean(billing && billing.methods && billing.methods.length);
   const usedByModel = (id) => usage?.models?.find((u) => u.modelId === id)?.used || 0;
 
   if (state.loading) {
-    return <div className="container" style={{ paddingTop: 56 }}><Spinner label="Loading plans…" /></div>;
+    return <div className="container" style={{ paddingTop: 56 }}><Spinner label="Loading models…" /></div>;
   }
   if (state.error) {
-    return <div className="container" style={{ paddingTop: 56 }}><ErrorState title="Couldn't load plans" desc={state.error} retry={load} /></div>;
+    return <div className="container" style={{ paddingTop: 56 }}><ErrorState title="Couldn't load models" desc={state.error} retry={load} /></div>;
   }
 
   return (
@@ -58,10 +56,10 @@ export default function AIPlans() {
       <div className="section-head">
         <div>
           <div className="eyebrow mb-2">The Tech Guider AI</div>
-          <h1 className="section-title">Plans &amp; usage</h1>
+          <h1 className="section-title">Models &amp; usage</h1>
           <p className="section-sub">
-            The Tech Guider AI (Guider Astron) is free for everyone — daily limits and your usage,
-            straight from the server.
+            Direct models — paid models one-time unlock hote hain (no monthly plans).
+            Har model ka apna feature aur rateLimit hai. Sahi limits server se aati hain.
           </p>
         </div>
         <Link to="/ai" className="btn btn-blue btn-lg"><Icon.ai size={18} /> Open chat</Link>
@@ -74,8 +72,11 @@ export default function AIPlans() {
             <div style={{ fontWeight: 600 }}>{user.name || user.email}</div>
           </div>
           <div>
-            <div className="text-xs muted3">Current plan</div>
-            <div style={{ fontWeight: 600, textTransform: 'capitalize' }}>{user.plan || 'free'}</div>
+            <div className="text-xs muted3">BuildX monthly used</div>
+            <div style={{ fontWeight: 600 }}>
+              {usage?.buildxMonthlyUsed ?? 0} / 250
+              {typeof usage?.buildxMonthlyUsed === 'number' && usage.buildxMonthlyUsed >= 250 ? ' (limit reached — unlock for unlimited)' : ''}
+            </div>
           </div>
           <div>
             <div className="text-xs muted3">Credits</div>
@@ -84,46 +85,45 @@ export default function AIPlans() {
         </div>
       ) : (
         <div className="aiw-plan-current card" style={{ margin: '22px 0' }}>
-          <div className="text-sm muted">You are not signed in. <Link to="/ai">Sign in</Link> to track your usage and keep chat history.</div>
+          <div className="text-sm muted">You are not signed in. <Link to="/auth">Sign in</Link> to track your usage, keep chat history aur BuildX use karein.</div>
         </div>
       )}
 
       <div className="aiw-plans">
-        {plans.map((p) => {
-          const isCurrent = user && (user.plan || 'free') === p.id;
+        {models.map((m) => {
+          const locked = Boolean(m.locked && m.enabled !== false);
+          const priceLabel = m.tier === 'paid'
+            ? (m.unlocked ? 'Unlocked' : `${money(m.price)} one-time`)
+            : 'Free';
           return (
-            <div key={p.id} className={`card aiw-plan${isCurrent ? ' current' : ''}`}>
+            <div key={m.id} className={`card aiw-plan${!locked && m.enabled !== false ? ' current' : ''}`}>
               <div className="aiw-plan-head">
-                <h3>{p.name}</h3>
-                {isCurrent && <span className="badge badge-blue">Current</span>}
-                {!p.enabled && <span className="badge">Unavailable</span>}
+                <h3>{m.badge} {m.name}</h3>
+                {locked && <span className="badge badge-blue">🔒 Locked</span>}
               </div>
               <div className="aiw-plan-price">
-                {p.id === 'free' ? (
-                  <span>Free</span>
-                ) : (
-                  <>
-                    <span className="aiw-plan-amount">{money(p.monthly)}</span>
-                    <span className="aiw-plan-per">/month</span>
-                  </>
-                )}
+                <span>{priceLabel}</span>
               </div>
-              {p.id !== 'free' && p.yearly > 0 && (
-                <div className="aiw-plan-yearly">{money(p.yearly)} / year</div>
-              )}
-              <p className="text-sm muted" style={{ marginTop: 10 }}>{p.desc}</p>
+              <p className="text-sm muted" style={{ marginTop: 10 }}>{m.desc}</p>
               <ul className="aiw-plan-features">
-                {(p.features || p.unlocks || []).length === 0 && <li className="muted3">Free daily models only</li>}
-                {(p.features || p.unlocks || []).map((f) => (
-                  <li key={f}><Icon.check size={14} /> {modelName(f)}</li>
-                ))}
+                {m.id === 'guider-buildx' ? (
+                  <>
+                    <li>✅ Free: 250 messages / month</li>
+                    <li>✅ Paid unlock: unlimited</li>
+                  </>
+                ) : (
+                  <li><Icon.check size={14} /> {m.tier === 'paid' ? 'One-time unlock = lifetime unlimited' : `Daily limit: ${m.dailyLimit} messages`}</li>
+                )}
               </ul>
-              {user && usage && (p.features || p.unlocks || []).length > 0 && (
+              {user && !locked && (
                 <div className="aiw-plan-usage text-xs muted3">
-                  {(p.features || p.unlocks || []).map((f) => (
-                    <div key={f}>{modelName(f)} used today: {usedByModel(f)}</div>
-                  ))}
+                  Used today: {usedByModel(m.id)}
                 </div>
+              )}
+              { locked && m.enabled !== false && (
+                <Link to={`/ai/unlock/${m.id}`} className="btn btn-blue aiw-plan-unlock" style={{ marginTop: 12 }}>
+                  🔓 Unlock for {money(m.price)}
+                </Link>
               )}
             </div>
           );
@@ -131,17 +131,15 @@ export default function AIPlans() {
       </div>
 
       <div className="card" style={{ marginTop: 24 }}>
-        <h3 style={{ fontSize: 17, marginBottom: 8 }}>How upgrades work</h3>
+        <h3 style={{ fontSize: 17, marginBottom: 8 }}>How unlocks work</h3>
         {billingAvailable ? (
           <p className="text-sm muted" style={{ margin: 0 }}>
-            Payments are reviewed manually. Open the AI billing page to pick a payment method,
-            submit your transaction reference and proof — access is granted after the owner reviews it.
-            {' '}<a href="/ai/plans.html">Go to billing</a>.
+            Paid models use manual JazzCash / bank transfer proof review — model unlocks
+            once the owner approves it. No card data needed.
           </p>
         ) : (
           <p className="text-sm muted" style={{ margin: 0 }}>
-            <strong>Upgrade unavailable right now:</strong> no payment methods are configured on the
-            server yet, so paid plans cannot be purchased. Your free daily models still work.
+            <strong>Unlocking unavailable right now:</strong> no payment methods yet — owner panel mein methods add karein. Free daily models still work.
           </p>
         )}
       </div>
