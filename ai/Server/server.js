@@ -467,7 +467,7 @@ const HUB_HELP_SYSTEM = [
   "- Community: /about, /team",
   "- Free search: press / (slash) anywhere to open the Hub search modal.",
   "",
-  "AI inside the Hub: The Tech Guider AI (model: Guider Astron) — free for everyone at /ai and in the",
+  "AI inside the Hub: The Tech Guider AI (models: Guider Paradise free, plus paid Blaze/Lite/Titan/Deep/BuildX) — free for everyone at /ai and in the",
   "floating help widget; daily limit 30 chats/day, shown with usage at /ai/plans.",
   "Payments: manual review — user sends money (e.g. JazzCash / bank transfer), enters the transaction reference at checkout,",
   "and the owner approves it in the owner dashboard; the plan unlocks after approval.",
@@ -641,7 +641,9 @@ function buildxMonthlyUsed(userId) {
 }
 app.get("/api/models", (req, res) => {
   const user = getUser(req);
-  const list = Object.entries(MODELS).map(([id]) => {
+  // Guider Astron is the internal Hub Helper engine (floating site widget) —
+  // it is never a user-selectable model in The Tech Guider AI workspace.
+  const list = Object.entries(MODELS).filter(([id]) => id !== "guider-astron").map(([id]) => {
     const m = modelConfig(id);
     const unlocked = Boolean(user) && (user.role === "owner" || modelUnlocked(user.id, id));
     let locked = false;
@@ -1190,11 +1192,12 @@ app.post("/api/owner/assistant", requireOwner, async (req, res) => {
 app.post("/api/chat", async (req, res) => {
   const parsed = validate(chatSchema, req.body);
   if (parsed.error) return res.status(400).json({ error: parsed.error });
-  const { message, modelId = "guider-astron", conversationId, mode } = parsed.data;
+  const { message, modelId = "guider-paradise", conversationId, mode } = parsed.data;
   const hubHelp = mode === "hub-help";
   const buildX = mode === "buildx";
-  // BuildX mode always runs on the dedicated Guider BuildX model.
-  const effectiveModelId = buildX ? "guider-buildx" : modelId;
+  // BuildX mode always runs the dedicated Guider BuildX model; hub-help (site
+  // widget) always runs the internal Guider Astron engine.
+  const effectiveModelId = buildX ? "guider-buildx" : (hubHelp ? "guider-astron" : modelId);
 
   const model = modelConfig(effectiveModelId);
   if (!model) return res.status(400).json({ error: "Unknown model selected." });
@@ -1236,7 +1239,7 @@ app.post("/api/chat", async (req, res) => {
 
   try {
     const reply = await callProvider(model.provider, model.model, [
-      { role: "system", content: hubHelp ? HUB_HELP_SYSTEM : (buildX ? BUILDX_SYSTEM : "You are The Tech Guider AI (model: Guider Astron), a helpful tech assistant made by The Tech Guider Hub.") },
+      { role: "system", content: hubHelp ? HUB_HELP_SYSTEM : (buildX ? BUILDX_SYSTEM : `You are The Tech Guider AI (model: ${model.name}), a helpful tech assistant made by The Tech Guider Hub.`) },
       ...history,
       { role: "user", content: message },
     ]);
