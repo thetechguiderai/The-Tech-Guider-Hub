@@ -32,38 +32,62 @@
   </div>
 
 <script>
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let allConversations = [];
+
+function render(items) {
+  const list = document.getElementById("historyList");
+  if (!items || items.length === 0) {
+    list.innerHTML = `<p class="empty-note">No conversations found.</p>`;
+    return;
+  }
+  list.innerHTML = items.map(c => `
+    <div class="list-card">
+      <div>
+        <div style="font-weight:600;">${esc(c.title)}</div>
+        <div class="meta">${esc(c.model)} • ${esc(c.updated_at)}</div>
+      </div>
+      <div>
+        <a href="./chat.html?c=${encodeURIComponent(c.id)}" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;">Open</a>
+        <button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" data-del="${esc(c.id)}">Delete</button>
+      </div>
+    </div>`).join("");
+
+  list.querySelectorAll("[data-del]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Delete this conversation?")) return;
+      try {
+        await fetch(`/api/conversations/${encodeURIComponent(btn.dataset.del)}`, { method: "DELETE", credentials: "include" });
+        load();
+      } catch (e) {
+        alert(e.message || "Failed to delete.");
+      }
+    });
+  });
+}
+
 async function load() {
   const list = document.getElementById("historyList");
   try {
     const res = await fetch("/api/conversations", { credentials: "include" });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
-    if (data.conversations.length === 0) {
-      list.innerHTML = `<p class="empty-note">No conversations yet. Start chatting to see your history here.</p>`;
-      return;
-    }
-    list.innerHTML = data.conversations.map(c => `
-      <div class="list-card">
-        <div>
-          <div>${c.title}</div>
-          <div class="meta">${c.model} • ${c.updated_at}</div>
-        </div>
-        <div>
-          <a href="./chat.html?c=${c.id}" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;">Open</a>
-          <button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" data-del="${c.id}">Delete</button>
-        </div>
-      </div>`).join("");
-
-    list.querySelectorAll("[data-del]").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        await fetch(`/api/conversations/${btn.dataset.del}`, { method: "DELETE", credentials: "include" });
-        load();
-      });
-    });
+    allConversations = data.conversations || [];
+    render(allConversations);
   } catch (err) {
-    list.innerHTML = `<p class="empty-note">${err.message || "Sign in to see chat history."}</p>`;
+    list.innerHTML = `<p class="empty-note">Please <a href="./login.html?next=./history.html" style="color:var(--text);text-decoration:underline;">Sign in</a> to view chat history.</p>`;
   }
 }
+
+const searchInput = document.querySelector(".search");
+if (searchInput) {
+  searchInput.addEventListener("input", e => {
+    const q = e.target.value.toLowerCase().trim();
+    const filtered = allConversations.filter(c => (c.title || '').toLowerCase().includes(q) || (c.model || '').toLowerCase().includes(q));
+    render(filtered);
+  });
+}
+
 load();
 </script>
 </body>

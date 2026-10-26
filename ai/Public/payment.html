@@ -1,1 +1,62 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Payment — The Tech Guider AI</title><link rel="stylesheet" href="./style.css"><script src="./api.js"></script></head><body class="landing"><header class="nav"><a class="logo" href="./plans.html">The Tech Guider AI</a><a class="btn btn-ghost" href="./payment-history.html">Payment history</a></header><main class="section-block"><p class="section-label">SECURE PAYMENT REQUEST</p><h1 class="section-title">Complete your plan payment.</h1><section class="plan-card" style="max-width:620px;margin:auto"><form id="f" class="owner-form"><label>Plan<select id="plan" name="planId"></select></label><label>Billing<select id="interval" name="interval"><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label><label>Promo code<input id="promo" name="promoCode" maxlength="32" placeholder="TECH50"></label><button class="btn btn-ghost" type="button" id="quote">Apply promo / refresh total</button><p id="total" class="owner-note"></p><label>Payment method<select id="method" name="paymentMethodId"></select></label><p id="instructions" class="owner-note"></p><label>Transaction / reference ID<input name="transactionId" maxlength="120" required></label><label>Payment proof reference or secure upload URL<input name="proofReference" maxlength="1000"></label><p class="owner-note">Never enter card number, CVV, PIN, password, or OTP.</p><button class="btn btn-primary">Submit payment for review</button><p id="message" class="owner-note"></p></form></section></main><script>const $=s=>document.querySelector(s),qs=new URLSearchParams(location.search);let methods=[];async function api(u,o={}){const r=await fetch(u,{credentials:'include',headers:{'Content-Type':'application/json'},...o}),d=await r.json();if(!r.ok)throw Error(d.error);return d}async function refresh(){try{const d=await api('/api/billing/quote',{method:'POST',body:JSON.stringify({planId:$('#plan').value,interval:$('#interval').value,promoCode:$('#promo').value})});$('#total').textContent=`Original: PKR ${d.originalAmount} · Discount: PKR ${d.discountAmount} · Final: PKR ${d.finalAmount}`}catch(e){$('#total').textContent=e.message}}function instructions(){const m=methods.find(x=>x.id===$('#method').value);$('#instructions').textContent=m?m.instructions+(m.proof_required?' Payment proof reference is required.':''):''}async function init(){try{const [p,m]=await Promise.all([api('/api/plans'),api('/api/billing/methods')]);$('#plan').innerHTML=p.plans.filter(x=>x.enabled&&x.id!=='free').map(x=>`<option value="${x.id}">${x.name}</option>`).join('');$('#plan').value=qs.get('plan')||$('#plan').value;$('#interval').value=qs.get('interval')||'monthly';methods=m.methods;$('#method').innerHTML=methods.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');instructions();refresh()}catch(e){$('#message').textContent=e.message}}$('#quote').onclick=refresh;$('#plan').onchange=refresh;$('#interval').onchange=refresh;$('#method').onchange=instructions;$('#f').onsubmit=async e=>{e.preventDefault();try{await api('/api/billing/checkout',{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});$('#message').textContent='Payment submitted. Status: Pending review.'}catch(x){$('#message').textContent=x.message}};init()</script></body></html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Payment — The Tech Guider AI</title><link rel="stylesheet" href="./style.css"><script src="./api.js"></script></head><body class="landing"><header class="nav"><a class="logo" href="./plans.html">The Tech Guider AI</a><a class="btn btn-ghost" href="./payment-history.html">Payment history</a></header><main class="section-block"><p class="section-label">SECURE PAYMENT REQUEST</p><h1 class="section-title">Complete your plan payment.</h1><section class="plan-card" style="max-width:620px;margin:auto"><form id="f" class="owner-form"><label>Plan<select id="plan" name="planId"></select></label><label>Billing<select id="interval" name="interval"><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label><label>Promo code<input id="promo" name="promoCode" maxlength="32" placeholder="TECH50"></label><button class="btn btn-ghost" type="button" id="quote">Apply promo / refresh total</button><p id="total" class="owner-note"></p><label>Payment method<select id="method" name="paymentMethodId"></select></label><p id="instructions" class="owner-note"></p><label>Transaction / reference ID<input name="transactionId" maxlength="120" required></label><label>Payment proof reference or secure upload URL<input id="proofReference" name="proofReference" maxlength="1000"></label><p class="owner-note">Never enter card number, CVV, PIN, password, or OTP.</p><button class="btn btn-primary" id="submitBtn">Submit payment for review</button><p id="message" class="owner-note"></p></form></section></main><script>
+const $=s=>document.querySelector(s),qs=new URLSearchParams(location.search);
+let methods=[];
+async function api(u,o={}){
+  const r=await fetch(u,{credentials:'include',headers:{'Content-Type':'application/json'},...o});
+  let d=null;
+  const ct=r.headers.get('content-type')||'';
+  if(r.status!==204&&ct.includes('application/json')){
+    d=await r.json().catch(()=>null);
+  }
+  if(!r.ok)throw Error((d&&d.error)||'Request failed.');
+  return d;
+}
+async function refresh(){
+  try{
+    const d=await api('/api/billing/quote',{method:'POST',body:JSON.stringify({planId:$('#plan').value,interval:$('#interval').value,promoCode:$('#promo').value})});
+    $('#total').textContent=`Original: PKR ${d.originalAmount} · Discount: PKR ${d.discountAmount} · Final: PKR ${d.finalAmount}`;
+  }catch(e){
+    $('#total').textContent=e.message;
+  }
+}
+function instructions(){
+  const m=methods.find(x=>x.id===$('#method').value);
+  const req=Boolean(m&&m.proof_required);
+  $('#instructions').textContent=m?m.instructions+(req?' Payment proof reference is required.':''):'';
+  const proofInp=$('#proofReference');
+  if(proofInp) proofInp.required=req;
+}
+async function init(){
+  try{
+    const [p,m]=await Promise.all([api('/api/plans'),api('/api/billing/methods')]);
+    $('#plan').innerHTML=p.plans.filter(x=>x.enabled&&x.id!=='free').map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
+    $('#plan').value=qs.get('plan')||$('#plan').value;
+    $('#interval').value=qs.get('interval')||'monthly';
+    methods=m.methods;
+    $('#method').innerHTML=methods.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
+    instructions();
+    refresh();
+  }catch(e){
+    $('#message').textContent=e.message;
+  }
+}
+$('#quote').onclick=refresh;
+$('#plan').onchange=refresh;
+$('#interval').onchange=refresh;
+$('#method').onchange=instructions;
+$('#f').onsubmit=async e=>{
+  e.preventDefault();
+  const btn=$('#submitBtn');
+  if(btn.disabled) return;
+  btn.disabled=true;
+  try{
+    await api('/api/billing/checkout',{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});
+    $('#message').textContent='Payment submitted. Status: Pending review.';
+  }catch(x){
+    $('#message').textContent=x.message;
+  }finally{
+    btn.disabled=false;
+  }
+};
+init();
+</script></body></html>

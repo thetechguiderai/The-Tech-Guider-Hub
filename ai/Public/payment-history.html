@@ -32,25 +32,47 @@
   </div>
 
 <script>
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let allPayments = [];
+
+function render(items) {
+  const list = document.getElementById("payList");
+  if (!items || items.length === 0) {
+    list.innerHTML = `<p class="empty-note">No payments found.</p>`;
+    return;
+  }
+  list.innerHTML = items.map(p => `
+    <div class="list-card">
+      <div>
+        <div style="font-weight:600;">${esc(p.plan)}</div>
+        <div class="meta">${esc(p.created_at)}</div>
+      </div>
+      <div>PKR ${esc(p.final_amount ?? p.amount)} — <span style="text-transform:capitalize;">${esc(p.status)}</span></div>
+    </div>`).join("");
+}
+
 async function load() {
   const list = document.getElementById("payList");
   try {
     const res = await fetch("/api/payments", { credentials: "include" });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
-    if (data.payments.length === 0) {
-      list.innerHTML = `<p class="empty-note">No payments yet.</p>`;
-      return;
-    }
-    list.innerHTML = data.payments.map(p => `
-      <div class="list-card">
-        <div><div>${p.plan}</div><div class="meta">${p.created_at}</div></div>
-        <div>PKR ${p.amount} — ${p.status}</div>
-      </div>`).join("");
+    allPayments = data.payments || [];
+    render(allPayments);
   } catch (err) {
-    list.innerHTML = `<p class="empty-note">${err.message || "Sign in to view payment history."}</p>`;
+    list.innerHTML = `<p class="empty-note">Please <a href="./login.html?next=./payment-history.html" style="color:var(--text);text-decoration:underline;">Sign in</a> to view payment history.</p>`;
   }
 }
+
+const searchInput = document.querySelector(".search");
+if (searchInput) {
+  searchInput.addEventListener("input", e => {
+    const q = e.target.value.toLowerCase().trim();
+    const filtered = allPayments.filter(p => (p.plan || '').toLowerCase().includes(q) || (p.status || '').toLowerCase().includes(q) || String(p.final_amount ?? p.amount).includes(q));
+    render(filtered);
+  });
+}
+
 load();
 </script>
 </body>

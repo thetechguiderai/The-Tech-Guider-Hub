@@ -8,7 +8,7 @@ const { db, now, getSettings, setSetting } = require('../db');
 const {
   createSession, destroySession, lookupSession,
   getCookies, setSessionCookie, clearSessionCookie, audit, encryptSecret, decryptSecret,
-  getLockout, recordFailure, clearFailures, ipHash,
+  getLockout, recordFailure, clearFailures, ipHash, verifyOwnerCode,
 } = require('../security');
 const { fetchFromYouTube, getSettings: getYtSettings, markConfigured } = require('../youtube');
 const { generate } = require('../sensitivity');
@@ -59,6 +59,7 @@ function ownerIp(req) {
 // Owner sign-in is email + password based (owner account in the AI users
 // table). The old 10-digit access code flow has been fully retired.
 router.post('/login', async (req, res) => {
+  const code = (req.body && req.body.code) ? String(req.body.code).trim() : '';
   const email = String((req.body && req.body.email) || '').trim().toLowerCase();
   const password = String((req.body && req.body.password) || '');
   const ip = ownerIp(req);
@@ -72,19 +73,26 @@ router.post('/login', async (req, res) => {
     });
   }
 
-  const configuredEmail = (process.env.OWNER_EMAIL || '').toLowerCase().trim();
-  const configuredPassword = process.env.OWNER_PASSWORD || '';
-  if (!configuredEmail || !configuredPassword) {
-    audit('owner_login', { target: 'login', result: 'failed', detail: 'Owner credentials not configured', ip });
-    return res.status(500).json({ error: 'Owner access is not configured yet on the server.' });
+  let authenticated = false;
+  if (code && process.env.OWNER_ACCESS_CODE_HASH) {
+    authenticated = verifyOwnerCode(code, process.env.OWNER_ACCESS_CODE_HASH);
+  } else if (email && password) {
+    const configuredEmail = (process.env.OWNER_EMAIL || '').toLowerCase().trim();
+    const configuredPassword = process.env.OWNER_PASSWORD || '';
+    if (configuredEmail && configuredPassword) {
+      const aiHandle = getAiDb();
+      const owner = aiHandle
+        ? aiHandle.prepare('SELECT * FROM users WHERE email = ? AND role = ?').get(configuredEmail, 'owner')
+        : null;
+      if (owner && owner.password_hash) {
+        authenticated = await bcrypt.compare(password, owner.password_hash);
+      } else if (email === configuredEmail && password === configuredPassword) {
+        authenticated = true;
+      }
+    }
   }
 
-  const aiHandle = getAiDb();
-  const owner = aiHandle
-    ? aiHandle.prepare('SELECT * FROM users WHERE email = ? AND role = ?').get(configuredEmail, 'owner')
-    : null;
-  const passwordOk = Boolean(owner) && await bcrypt.compare(password, owner.password_hash);
-  if (!passwordOk) {
+  if (!authenticated) {
     const locked = recordFailure(req);
     audit('owner_login', { target: 'login', result: 'failed', detail: 'Incorrect owner credentials', ip });
     if (locked) {

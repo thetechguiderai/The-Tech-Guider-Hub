@@ -98,6 +98,9 @@ app.use('/api/fun', funRouter);
 app.use('/api/public', publicRoutes);
 app.use('/api/owner', ownerRoutes);
 app.use('/api/tiktok', tiktokRoutes);
+app.use('/api/auth', (req, res, next) => {
+  getAiApp().then((ai) => ai(req, res, next)).catch(next);
+});
 
 // ---- The Tech Guider AI (merged, served under /ai) ----
 // The AI app is ESM while this server is CommonJS, so it is loaded lazily with

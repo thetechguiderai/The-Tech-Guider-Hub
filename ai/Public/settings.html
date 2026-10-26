@@ -15,6 +15,11 @@
       <nav class="side-nav">
         <a href="./chat.html"><span>💬</span> Chat</a>
         <a href="./build.html"><span>🚀</span> Build Web</a>
+        <a href="./history.html"><span>🕒</span> History</a>
+        <a href="./explore.html"><span>🧭</span> Explore</a>
+        <a href="./wallet.html"><span>👛</span> Wallet</a>
+        <a href="./payment-history.html"><span>📄</span> Payment History</a>
+        <a href="./plans.html"><span>📋</span> Plans</a>
         <a href="./settings.html" class="active"><span>⚙</span> Settings</a>
       </nav>
     </aside>
@@ -26,7 +31,7 @@
             <div class="field"><label>Theme</label>
                 <select id="themeSelect" onchange="updateTheme(this.value)">
                     <option value="dark">Dark Mode</option>
-                    <option value="light">Light Mode (Coming Soon)</option>
+                    <option value="light">Light Mode</option>
                 </select>
             </div>
             <div id="userSettings"></div>
@@ -36,36 +41,71 @@
   </div>
 
 <script>
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function applyTheme(theme) {
+  if (theme === 'light') {
+    document.body.classList.add('light');
+    document.documentElement.classList.add('light');
+  } else {
+    document.body.classList.remove('light');
+    document.documentElement.classList.remove('light');
+  }
+}
+
+function updateTheme(val) {
+  localStorage.setItem('tg_theme', val);
+  applyTheme(val);
+}
+
+const savedTheme = localStorage.getItem('tg_theme') || 'dark';
+const tSelect = document.getElementById("themeSelect");
+if (tSelect) tSelect.value = savedTheme;
+applyTheme(savedTheme);
+
 async function load() {
   const box = document.getElementById("userSettings");
   try {
     const res = await fetch("/api/auth/me", { credentials: "include" });
-    const { user } = await res.json();
-    if (!user) { box.innerHTML = `<p class="empty-note">Sign in to manage profile settings.</p>`; return; }
+    const { user } = await res.json().catch(() => ({}));
+    if (!user) {
+      box.innerHTML = `<p class="empty-note">Please <a href="./login.html?next=./settings.html" style="color:var(--text);text-decoration:underline;">Sign in</a> to manage profile settings.</p>`;
+      return;
+    }
     box.innerHTML = `
-      <div class="field"><label>Name</label><input id="nameInput" value="${user.name || ""}"></div>
-      <div class="field"><label>Email</label><input value="${user.email}" disabled></div>
-      <div class="field"><label>Plan</label><input value="${user.plan}" disabled></div>
+      <div class="field"><label>Name</label><input id="nameInput" value="${esc(user.name || '')}"></div>
+      <div class="field"><label>Email</label><input value="${esc(user.email)}" disabled></div>
+      <div class="field"><label>Plan</label><input value="${esc(user.plan)}" disabled></div>
       <button class="btn btn-primary" id="saveBtn">Save changes</button>
       <button class="btn btn-ghost" id="logoutBtn" style="margin-top:10px;">Sign Out</button>
     `;
     document.getElementById("saveBtn").addEventListener("click", async () => {
       const name = document.getElementById("nameInput").value.trim();
-      await fetch("/api/auth/me", {
-        method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
-        body: JSON.stringify({ name }),
-      });
-      alert("Profile saved!");
+      try {
+        const r = await fetch("/api/auth/me", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ name }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          alert(d.error || "Profile could not be saved.");
+          return;
+        }
+        alert("Profile saved!");
+      } catch (err) {
+        alert(err.message || "Network error while saving.");
+      }
     });
     document.getElementById("logoutBtn").addEventListener("click", async () => {
       await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-      window.location.href="./index.html";
+      window.location.href = "./index.html";
     });
   } catch {
-    box.innerHTML = `<p class="empty-note">Sign in to manage profile settings.</p>`;
+    box.innerHTML = `<p class="empty-note">Please <a href="./login.html?next=./settings.html" style="color:var(--text);text-decoration:underline;">Sign in</a> to manage profile settings.</p>`;
   }
 }
-function updateTheme(val) { alert("Theme update requested: " + val); }
 load();
 </script>
 </body>

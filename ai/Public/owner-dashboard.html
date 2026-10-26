@@ -1,13 +1,169 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Owner Dashboard — The Tech Guider AI</title><link rel="stylesheet" href="./style.css"><link rel="stylesheet" href="./owner.css"><script src="./api.js"></script></head><body class="owner-app"><aside class="owner-sidebar"><a class="owner-brand" href="./chat.html">The Tech Guider AI</a><p>OWNER DASHBOARD</p><nav id="nav"><button data-v="overview" class="active">Overview</button><button data-v="users">Users</button><button data-v="models">AI Models</button><button data-v="plans">Plans & Pricing</button><button data-v="credits">Credits</button><button data-v="payments">Payments</button><button data-v="analytics">Analytics</button><button data-v="announcements">Announcements</button><button data-v="maintenance">Maintenance</button><button data-v="audit">Audit Logs</button><button data-v="settings">Settings</button></nav><div class="owner-profile"><b id="ownerEmail">Owner</b><button id="logout">Log out</button></div></aside><main class="owner-main"><header><div><p>THE TECH GUIDER AI</p><h1 id="title">Overview</h1></div></header><p id="notice" hidden></p><section id="app" class="owner-loading">Loading…</section></main><script>
-const $=s=>document.querySelector(s),app=$('#app'),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));async function api(u,o={}){const r=await fetch(u,{credentials:'include',headers:{'Content-Type':'application/json'},...o}),d=await r.json();if(!r.ok)throw Error(d.error||'Request failed.');return d}const table=(h,r)=>`<div class="owner-table"><table><thead><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${r||`<tr><td colspan="${h.length}">No records.</td></tr>`}</tbody></table></div>`;function note(m,e=false){const n=$('#notice');n.hidden=!m;n.textContent=m;n.className=e?'error':''}
-async function overview(){const d=await api('/api/owner/overview'),cards=[['Total users',d.totalUsers],['Active users',d.activeUsers],['AI requests',d.totalRequests],['Credits issued',d.creditsIssued],['Revenue','PKR '+d.revenue],['Active subscriptions',d.activeSubscriptions],['Pending payments',d.pendingPayments],['Failed payments',d.failedPayments]];app.innerHTML=`<div class="owner-cards">${cards.map(x=>`<article class="owner-card"><span>${x[0]}</span><strong>${x[1]}</strong></article>`).join('')}</div><div class="owner-grid"><section class="owner-panel"><h2>Model usage</h2>${table(['Model','Requests'],d.modelUsage.map(x=>`<tr><td>${esc(x.model)}</td><td>${x.count}</td></tr>`).join(''))}</section><section class="owner-panel"><h2>Recent activity</h2>${table(['Type','Detail','Time'],d.recentActivity.map(x=>`<tr><td>${esc(x.type)}</td><td>${esc(x.label)} · ${esc(x.detail)}</td><td>${esc(x.created_at)}</td></tr>`).join(''))}</section></div>`}
-async function users(){const d=await api('/api/owner/users');app.innerHTML=table(['User','Role','Plan','Credits','Usage','Status','Actions'],d.users.map(u=>`<tr><td><b>${esc(u.name||'—')}</b><small>${esc(u.email)}</small></td><td>${esc(u.role)}</td><td>${esc(u.plan)}</td><td>${u.credits||0}</td><td>${u.usage||0}</td><td>${u.disabled?'Disabled':'Active'}</td><td><button data-u="${u.id}" data-d="${u.disabled?0:1}">${u.disabled?'Enable':'Disable'}</button> <button data-c="${u.id}">Credits</button></td></tr>`).join(''));document.querySelectorAll('[data-u]').forEach(b=>b.onclick=async()=>{if(confirm('Change account status?')){await api('/api/owner/users/'+b.dataset.u,{method:'PATCH',body:JSON.stringify({disabled:Boolean(+b.dataset.d)})});note('User updated.');users()}});document.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>credits(b.dataset.c))}
-async function models(){const d=await api('/api/owner/models');app.innerHTML=table(['Model','Tier','Limit','Enabled','Save'],d.models.map(m=>`<tr><td><b>${esc(m.name)}</b><small>${esc(m.id)}</small></td><td><select id="t-${m.id}">${['free','paid','guest'].map(x=>`<option ${x===m.tier?'selected':''}>${x}</option>`).join('')}</select></td><td><input id="l-${m.id}" type="number" min="0" value="${m.dailyLimit}"></td><td><input id="e-${m.id}" type="checkbox" ${m.enabled?'checked':''}></td><td><button data-m="${m.id}">Save</button></td></tr>`).join(''));document.querySelectorAll('[data-m]').forEach(b=>b.onclick=async()=>{if(!$('#e-'+b.dataset.m).checked&&!confirm('Disable model?'))return;await api('/api/owner/models/'+b.dataset.m,{method:'PATCH',body:JSON.stringify({enabled:$('#e-'+b.dataset.m).checked,tier:$('#t-'+b.dataset.m).value,dailyLimit:Number($('#l-'+b.dataset.m).value)})});note('Model saved.');models()})}
-async function plans(){const [p,m]=await Promise.all([api('/api/owner/plans'),api('/api/owner/models')]);app.innerHTML=table(['Plan','Monthly','Yearly','Limit','Enabled','Models','Save'],p.plans.map(x=>`<tr><td>${esc(x.name)}</td><td><input id="mo-${x.id}" type="number" value="${x.monthly}"></td><td><input id="yr-${x.id}" type="number" value="${x.yearly}"></td><td><input id="dl-${x.id}" type="number" value="${x.dailyLimit??0}"></td><td><input id="en-${x.id}" type="checkbox" ${x.enabled?'checked':''}></td><td>${m.models.map(q=>`<label><input class="f-${x.id}" type="checkbox" value="${q.id}" ${x.features.includes(q.id)?'checked':''}>${esc(q.name)}</label>`).join('<br>')}</td><td><button data-p="${x.id}">Save</button></td></tr>`).join(''));document.querySelectorAll('[data-p]').forEach(b=>b.onclick=async()=>{const id=b.dataset.p;await api('/api/owner/plans/'+id,{method:'PATCH',body:JSON.stringify({monthly:+$('#mo-'+id).value,yearly:+$('#yr-'+id).value,dailyLimit:+$('#dl-'+id).value,enabled:$('#en-'+id).checked,features:[...document.querySelectorAll('.f-'+id+':checked')].map(e=>e.value)})});note('Plan saved.');plans()})}
-async function credits(id=''){const d=await api('/api/owner/users');app.innerHTML=`<section class="owner-panel"><h2>Credit adjustment</h2><form id="cf" class="owner-form"><select name="userId">${d.users.map(u=>`<option value="${u.id}" ${id===u.id?'selected':''}>${esc(u.email)} (${u.credits||0})</option>`).join('')}</select><input name="amount" type="number" required placeholder="Positive adds; negative removes"><input name="reason" maxlength="300" required placeholder="Reason"><button>Apply adjustment</button></form></section>`;$('#cf').onsubmit=async e=>{e.preventDefault();const x=Object.fromEntries(new FormData(e.target));await api('/api/owner/wallets/'+x.userId+'/adjust',{method:'POST',body:JSON.stringify({amount:+x.amount,reason:x.reason})});note('Credits adjusted and audit logged.');credits(x.userId)}}
-async function payments(){const d=await api('/api/owner/payments');app.innerHTML=table(['User','Plan','Amount','Method','Reference','Status','Action'],d.payments.map(p=>`<tr><td>${esc(p.email)}</td><td>${esc(p.plan)}</td><td>PKR ${p.final_amount??p.amount}</td><td>${esc(p.payment_method||'—')}</td><td>${esc(p.transaction_id||'—')}</td><td>${esc(p.status)}</td><td>${p.status==='pending'?`<button data-pay="${p.id}" data-s="approved">Approve</button> <button data-pay="${p.id}" data-s="rejected" class="danger">Reject</button>`:'—'}</td></tr>`).join(''));document.querySelectorAll('[data-pay]').forEach(b=>b.onclick=async()=>{if(confirm(`${b.dataset.s} this payment?`)){await api('/api/owner/payments/'+b.dataset.pay,{method:'PATCH',body:JSON.stringify({status:b.dataset.s,adminNote:prompt('Internal note')||''})});note('Payment updated.');payments()}})}
-async function analytics(){const d=await api('/api/owner/analytics?days=30'),block=(n,a,k='count')=>`<section class="owner-panel"><h2>${n} · 30 days</h2>${table(['Date','Value'],a.map(x=>`<tr><td>${x.day}</td><td>${x[k]}</td></tr>`).join(''))}</section>`;app.innerHTML=`<div class="owner-grid">${block('User growth',d.users)}${block('AI requests',d.requests)}${block('Revenue',d.revenue,'amount')}<section class="owner-panel"><h2>Model usage</h2>${table(['Model','Requests'],d.models.map(x=>`<tr><td>${esc(x.model)}</td><td>${x.count}</td></tr>`).join(''))}</section></div>`}
-async function announcements(){const d=await api('/api/owner/announcements');app.innerHTML=`<section class="owner-panel"><h2>Create announcement</h2><form id="af" class="owner-form"><input name="title" required placeholder="Title"><textarea name="body" required placeholder="Message"></textarea><select name="type"><option>info</option><option>success</option><option>warning</option><option>important</option></select><label><input name="active" type="checkbox" checked> Active</label><input name="startsAt" type="datetime-local"><input name="endsAt" type="datetime-local"><button>Create</button></form></section>${table(['Title','Type','Active','Actions'],d.announcements.map(a=>`<tr><td><b>${esc(a.title)}</b><small>${esc(a.body)}</small></td><td>${esc(a.type||'info')}</td><td>${a.active?'Yes':'No'}</td><td><button data-a="${a.id}" data-on="${a.active?0:1}">${a.active?'Disable':'Enable'}</button> <button data-x="${a.id}" class="danger">Delete</button></td></tr>`).join(''))}`;$('#af').onsubmit=async e=>{e.preventDefault();const x=Object.fromEntries(new FormData(e.target));await api('/api/announcements',{method:'POST',body:JSON.stringify({...x,active:Boolean(x.active)})});announcements()};document.querySelectorAll('[data-a]').forEach(b=>b.onclick=async()=>{await api('/api/owner/announcements/'+b.dataset.a,{method:'PATCH',body:JSON.stringify({active:Boolean(+b.dataset.on)})});announcements()});document.querySelectorAll('[data-x]').forEach(b=>b.onclick=async()=>{if(confirm('Delete announcement?')){await api('/api/owner/announcements/'+b.dataset.x,{method:'DELETE'});announcements()}})}
-async function maintenance(){const d=await api('/api/owner/maintenance');app.innerHTML=`<section class="owner-panel"><h2>Maintenance mode</h2><form id="mf" class="owner-form"><label><input name="enabled" type="checkbox" ${d.enabled?'checked':''}> Enable maintenance</label><textarea name="message" required>${esc(d.message)}</textarea><label>Start<input name="startsAt" type="datetime-local" value="${esc(d.startsAt||'')}"></label><label>End<input name="endsAt" type="datetime-local" value="${esc(d.endsAt||'')}"></label><button>Save</button></form></section>`;$('#mf').onsubmit=async e=>{e.preventDefault();const x=Object.fromEntries(new FormData(e.target));if(x.enabled&&!confirm('Enable maintenance?'))return;await api('/api/owner/maintenance',{method:'PATCH',body:JSON.stringify({...x,enabled:Boolean(x.enabled)})});note('Maintenance saved.')}}
-async function audit(){const d=await api('/api/owner/audit');app.innerHTML=table(['Action','Target','Owner','Details','Time'],d.audit.map(a=>`<tr><td>${esc(a.action)}</td><td>${esc(a.target||'—')}</td><td>${esc(a.owner_email||'—')}</td><td>${esc(a.detail||'—')}</td><td>${esc(a.created_at)}</td></tr>`).join(''))}function settings(){app.innerHTML='<section class="owner-panel"><h2>Settings</h2><p class="owner-note">Payment account details, API keys, and server configuration stay in deployment environment variables and are never exposed in this dashboard.</p></section>'}const views={overview,users,models,plans,credits,payments,analytics,announcements,maintenance,audit,settings};async function show(v){$('#title').textContent=document.querySelector(`[data-v="${v}"]`).textContent;document.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('active',b.dataset.v===v));app.textContent='Loading…';try{await views[v]()}catch(e){note(e.message,true);app.textContent='Unable to load section.';if(/Owner access|Sign in required/.test(e.message))location.assign('./login.html')}}document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>show(b.dataset.v));$('#logout').onclick=async()=>{await api('/api/auth/logout',{method:'POST'});location.assign('./login.html')};api('/api/auth/me').then(d=>$('#ownerEmail').textContent=d.user?.email||'Owner');show('overview');
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Owner Dashboard — The Tech Guider AI</title><link rel="stylesheet" href="./style.css"><script src="./api.js"></script></head><body class="owner-app"><aside class="owner-sidebar"><a class="owner-brand" href="./chat.html">The Tech Guider AI</a><p>OWNER DASHBOARD</p><nav id="nav"><button data-v="overview" class="active">Overview</button><button data-v="users">Users</button><button data-v="models">AI Models</button><button data-v="plans">Plans & Pricing</button><button data-v="credits">Credits</button><button data-v="payments">Payments</button><button data-v="analytics">Analytics</button><button data-v="announcements">Announcements</button><button data-v="maintenance">Maintenance</button><button data-v="audit">Audit Logs</button><button data-v="settings">Settings</button></nav><div class="owner-profile"><b id="ownerEmail">Owner</b><button id="logout">Log out</button></div></aside><main class="owner-main"><header><div><p>THE TECH GUIDER AI</p><h1 id="title">Overview</h1></div></header><p id="notice" hidden></p><section id="app" class="owner-loading">Loading…</section></main><script>
+const $=s=>document.querySelector(s),app=$('#app'),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function api(u,o={}){
+  const r=await fetch(u,{credentials:'include',headers:{'Content-Type':'application/json'},...o});
+  let d=null;
+  const ct=r.headers.get('content-type')||'';
+  if(r.status!==204&&ct.includes('application/json')){
+    d=await r.json().catch(()=>null);
+  }
+  if(!r.ok)throw Error((d&&d.error)||`Request failed (${r.status}).`);
+  return d;
+}
+const table=(h,r)=>`<div class="owner-table"><table><thead><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${r||`<tr><td colspan="${h.length}">No records.</td></tr>`}</tbody></table></div>`;
+function note(m,e=false){const n=$('#notice');n.hidden=!m;n.textContent=m;n.className=e?'error':'';}
+async function overview(){
+  const d=await api('/api/owner/overview'),cards=[['Total users',d.totalUsers],['Active users',d.activeUsers],['AI requests',d.totalRequests],['Credits issued',d.creditsIssued],['Revenue','PKR '+d.revenue],['Active subscriptions',d.activeSubscriptions],['Pending payments',d.pendingPayments],['Failed payments',d.failedPayments]];
+  app.innerHTML=`<div class="owner-cards">${cards.map(x=>`<article class="owner-card"><span>${x[0]}</span><strong>${x[1]}</strong></article>`).join('')}</div><div class="owner-grid"><section class="owner-panel"><h2>Model usage</h2>${table(['Model','Requests'],d.modelUsage.map(x=>`<tr><td>${esc(x.model)}</td><td>${x.count}</td></tr>`).join(''))}</section><section class="owner-panel"><h2>Recent activity</h2>${table(['Type','Detail','Time'],d.recentActivity.map(x=>`<tr><td>${esc(x.type)}</td><td>${esc(x.label)} · ${esc(x.detail)}</td><td>${esc(x.created_at)}</td></tr>`).join(''))}</section></div>`;
+}
+async function users(){
+  const d=await api('/api/owner/users');
+  app.innerHTML=table(['User','Role','Plan','Credits','Usage','Status','Actions'],d.users.map(u=>`<tr><td><b>${esc(u.name||'—')}</b><small>${esc(u.email)}</small></td><td>${esc(u.role)}</td><td>${esc(u.plan)}</td><td>${u.credits||0}</td><td>${u.usage||0}</td><td>${u.disabled?'Disabled':'Active'}</td><td><button data-u="${u.id}" data-d="${u.disabled?0:1}">${u.disabled?'Enable':'Disable'}</button> <button data-c="${u.id}">Credits</button></td></tr>`).join(''));
+  document.querySelectorAll('[data-u]').forEach(b=>b.onclick=async()=>{
+    if(confirm('Change account status?')){
+      try{
+        await api('/api/owner/users/'+b.dataset.u,{method:'PATCH',body:JSON.stringify({disabled:Boolean(+b.dataset.d)})});
+        note('User updated.');
+        users();
+      }catch(err){note(err.message,true);}
+    }
+  });
+  document.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{
+    const btn=document.querySelector('[data-v="credits"]');
+    if(btn){
+      $('#title').textContent=btn.textContent;
+      document.querySelectorAll('[data-v]').forEach(x=>x.classList.toggle('active',x.dataset.v==='credits'));
+    }
+    app.classList.remove('owner-loading');
+    credits(b.dataset.c);
+  });
+}
+async function models(){
+  const d=await api('/api/owner/models');
+  app.innerHTML=table(['Model','Tier','Limit','Enabled','Save'],d.models.map(m=>`<tr><td><b>${esc(m.name)}</b><small>${esc(m.id)}</small></td><td><select id="t-${m.id}">${['free','paid','guest'].map(x=>`<option ${x===m.tier?'selected':''}>${x}</option>`).join('')}</select></td><td><input id="l-${m.id}" type="number" min="0" value="${m.dailyLimit}"></td><td><input id="e-${m.id}" type="checkbox" ${m.enabled?'checked':''}></td><td><button data-m="${m.id}">Save</button></td></tr>`).join(''));
+  document.querySelectorAll('[data-m]').forEach(b=>b.onclick=async()=>{
+    if(!$('#e-'+b.dataset.m).checked&&!confirm('Disable model?'))return;
+    try{
+      await api('/api/owner/models/'+b.dataset.m,{method:'PATCH',body:JSON.stringify({enabled:$('#e-'+b.dataset.m).checked,tier:$('#t-'+b.dataset.m).value,dailyLimit:Number($('#l-'+b.dataset.m).value)})});
+      note('Model saved.');
+      models();
+    }catch(err){note(err.message,true);}
+  });
+}
+async function plans(){
+  const [p,m]=await Promise.all([api('/api/owner/plans'),api('/api/owner/models')]);
+  app.innerHTML=table(['Plan','Monthly','Yearly','Limit','Enabled','Models','Save'],p.plans.map(x=>`<tr><td>${esc(x.name)}</td><td><input id="mo-${x.id}" type="number" value="${x.monthly}"></td><td><input id="yr-${x.id}" type="number" value="${x.yearly}"></td><td><input id="dl-${x.id}" type="number" value="${x.dailyLimit??0}"></td><td><input id="en-${x.id}" type="checkbox" ${x.enabled?'checked':''}></td><td>${m.models.map(q=>`<label><input class="f-${x.id}" type="checkbox" value="${q.id}" ${x.features.includes(q.id)?'checked':''}>${esc(q.name)}</label>`).join('<br>')}</td><td><button data-p="${x.id}">Save</button></td></tr>`).join(''));
+  document.querySelectorAll('[data-p]').forEach(b=>b.onclick=async()=>{
+    const id=b.dataset.p;
+    try{
+      await api('/api/owner/plans/'+id,{method:'PATCH',body:JSON.stringify({monthly:+$('#mo-'+id).value,yearly:+$('#yr-'+id).value,dailyLimit:+$('#dl-'+id).value,enabled:$('#en-'+id).checked,features:[...document.querySelectorAll('.f-'+id+':checked')].map(e=>e.value)})});
+      note('Plan saved.');
+      plans();
+    }catch(err){note(err.message,true);}
+  });
+}
+async function credits(id=''){
+  const d=await api('/api/owner/users');
+  app.innerHTML=`<section class="owner-panel"><h2>Credit adjustment</h2><form id="cf" class="owner-form"><select name="userId">${d.users.map(u=>`<option value="${u.id}" ${id===u.id?'selected':''}>${esc(u.email)} (${u.credits||0})</option>`).join('')}</select><input name="amount" type="number" required placeholder="Positive adds; negative removes"><input name="reason" maxlength="300" required placeholder="Reason"><button>Apply adjustment</button></form></section>`;
+  $('#cf').onsubmit=async e=>{
+    e.preventDefault();
+    const x=Object.fromEntries(new FormData(e.target));
+    try{
+      await api('/api/owner/wallets/'+x.userId+'/adjust',{method:'POST',body:JSON.stringify({amount:+x.amount,reason:x.reason})});
+      note('Credits adjusted and audit logged.');
+      credits(x.userId);
+    }catch(err){note(err.message,true);}
+  };
+}
+async function payments(){
+  const d=await api('/api/owner/payments');
+  app.innerHTML=table(['User','Plan','Amount','Method','Reference','Status','Action'],d.payments.map(p=>`<tr><td>${esc(p.email)}</td><td>${esc(p.plan)}</td><td>PKR ${p.final_amount??p.amount}</td><td>${esc(p.payment_method||'—')}</td><td>${esc(p.transaction_id||'—')}</td><td>${esc(p.status)}</td><td>${p.status==='pending'?`<button data-pay="${p.id}" data-s="approved">Approve</button> <button data-pay="${p.id}" data-s="rejected" class="danger">Reject</button>`:'—'}</td></tr>`).join(''));
+  document.querySelectorAll('[data-pay]').forEach(b=>b.onclick=async()=>{
+    if(confirm(`${b.dataset.s} this payment?`)){
+      try{
+        await api('/api/owner/payments/'+b.dataset.pay,{method:'PATCH',body:JSON.stringify({status:b.dataset.s,adminNote:prompt('Internal note')||''})});
+        note('Payment updated.');
+        payments();
+      }catch(err){note(err.message,true);}
+    }
+  });
+}
+async function analytics(){
+  const d=await api('/api/owner/analytics?days=30'),block=(n,a,k='count')=>`<section class="owner-panel"><h2>${n} · 30 days</h2>${table(['Date','Value'],a.map(x=>`<tr><td>${x.day}</td><td>${x[k]}</td></tr>`).join(''))}</section>`;
+  app.innerHTML=`<div class="owner-grid">${block('User growth',d.users)}${block('AI requests',d.requests)}${block('Revenue',d.revenue,'amount')}<section class="owner-panel"><h2>Model usage</h2>${table(['Model','Requests'],d.models.map(x=>`<tr><td>${esc(x.model)}</td><td>${x.count}</td></tr>`).join(''))}</section></div>`;
+}
+async function announcements(){
+  const d=await api('/api/owner/announcements');
+  app.innerHTML=`<section class="owner-panel"><h2>Create announcement</h2><form id="af" class="owner-form"><input name="title" required placeholder="Title"><textarea name="body" required placeholder="Message"></textarea><select name="type"><option>info</option><option>success</option><option>warning</option><option>important</option></select><label><input name="active" type="checkbox" checked> Active</label><input name="startsAt" type="datetime-local"><input name="endsAt" type="datetime-local"><button>Create</button></form></section>${table(['Title','Type','Active','Actions'],d.announcements.map(a=>`<tr><td><b>${esc(a.title)}</b><small>${esc(a.body)}</small></td><td>${esc(a.type||'info')}</td><td>${a.active?'Yes':'No'}</td><td><button data-a="${a.id}" data-on="${a.active?0:1}">${a.active?'Disable':'Enable'}</button> <button data-x="${a.id}" class="danger">Delete</button></td></tr>`).join(''))}`;
+  $('#af').onsubmit=async e=>{
+    e.preventDefault();
+    const x=Object.fromEntries(new FormData(e.target));
+    try{
+      await api('/api/owner/announcements',{method:'POST',body:JSON.stringify({...x,active:Boolean(x.active)})});
+      note('Announcement created.');
+      announcements();
+    }catch(err){note(err.message,true);}
+  };
+  document.querySelectorAll('[data-a]').forEach(b=>b.onclick=async()=>{
+    try{
+      await api('/api/owner/announcements/'+b.dataset.a,{method:'PATCH',body:JSON.stringify({active:Boolean(+b.dataset.on)})});
+      note('Announcement updated.');
+      announcements();
+    }catch(err){note(err.message,true);}
+  });
+  document.querySelectorAll('[data-x]').forEach(b=>b.onclick=async()=>{
+    if(confirm('Delete announcement?')){
+      try{
+        await api('/api/owner/announcements/'+b.dataset.x,{method:'DELETE'});
+        note('Announcement deleted.');
+        announcements();
+      }catch(err){note(err.message,true);}
+    }
+  });
+}
+async function maintenance(){
+  const d=await api('/api/owner/maintenance');
+  app.innerHTML=`<section class="owner-panel"><h2>Maintenance mode</h2><form id="mf" class="owner-form"><label><input name="enabled" type="checkbox" ${d.enabled?'checked':''}> Enable maintenance</label><textarea name="message" required>${esc(d.message)}</textarea><label>Start<input name="startsAt" type="datetime-local" value="${esc(d.startsAt||'')}"></label><label>End<input name="endsAt" type="datetime-local" value="${esc(d.endsAt||'')}"></label><button>Save</button></form></section>`;
+  $('#mf').onsubmit=async e=>{
+    e.preventDefault();
+    const x=Object.fromEntries(new FormData(e.target));
+    if(x.enabled&&!confirm('Enable maintenance?'))return;
+    try{
+      await api('/api/owner/maintenance',{method:'PATCH',body:JSON.stringify({...x,enabled:Boolean(x.enabled)})});
+      note('Maintenance saved.');
+    }catch(err){note(err.message,true);}
+  };
+}
+async function audit(){
+  const d=await api('/api/owner/audit');
+  app.innerHTML=table(['Action','Target','Owner','Details','Time'],d.audit.map(a=>`<tr><td>${esc(a.action)}</td><td>${esc(a.target||'—')}</td><td>${esc(a.owner_email||'—')}</td><td>${esc(a.detail||'—')}</td><td>${esc(a.created_at)}</td></tr>`).join(''));
+}
+function settings(){
+  app.innerHTML='<section class="owner-panel"><h2>Settings</h2><p class="owner-note">Payment account details, API keys, and server configuration stay in deployment environment variables and are never exposed in this dashboard.</p></section>';
+}
+const views={overview,users,models,plans,credits,payments,analytics,announcements,maintenance,audit,settings};
+async function show(v){
+  const btn=document.querySelector(`[data-v="${v}"]`);
+  if(btn){
+    $('#title').textContent=btn.textContent;
+    document.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('active',b.dataset.v===v));
+  }
+  app.classList.add('owner-loading');
+  app.textContent='Loading…';
+  try{
+    await views[v]();
+    app.classList.remove('owner-loading');
+  }catch(e){
+    app.classList.remove('owner-loading');
+    note(e.message,true);
+    app.textContent='Unable to load section.';
+    if(/Owner access|Sign in required/.test(e.message))location.assign('./login.html');
+  }
+}
+document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>show(b.dataset.v));
+$('#logout').onclick=async()=>{
+  try{await api('/api/auth/logout',{method:'POST'});}finally{location.assign('./login.html');}
+};
+api('/api/auth/me').then(d=>$('#ownerEmail').textContent=d.user?.email||'Owner');
+show('overview');
 </script></body></html>

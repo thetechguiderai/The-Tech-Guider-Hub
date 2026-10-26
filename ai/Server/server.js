@@ -557,6 +557,136 @@ app.post("/api/auth/login", async (req, res) => {
   res.json({ user: publicUser(user) });
 });
 
+
+// ---------- GOOGLE OAUTH ----------
+app.get("/api/auth/google", (req, res) => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  if (!clientId || !clientSecret || clientId === "your_client_id_here") {
+    console.warn("[oauth] Google sign-in requested but GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is missing.");
+    return res.redirect("./login.html?oauth=unavailable");
+  }
+
+  const proto = req.headers["x-forwarded-proto"] || req.protocol || "http";
+  const host = req.headers["x-forwarded-host"] || req.get("host");
+  const defaultRedirectUri = `${proto}://${host}${req.baseUrl || ""}/api/auth/google/callback`;
+  const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URL || defaultRedirectUri;
+
+  const rawNext = req.query.next ? String(req.query.next) : "./chat.html";
+  const safeNext = (rawNext && (rawNext.startsWith("/") || rawNext.startsWith("./")) && !rawNext.startsWith("//") && !rawNext.includes("\\") && !rawNext.includes(":")) ? rawNext : "./chat.html";
+
+  const state = crypto.randomBytes(24).toString("hex");
+  const statePayload = JSON.stringify({ state, next: safeNext, redirectUri });
+
+  res.cookie("tg_oauth_state", statePayload, {
+    httpOnly: true,
+    secure: isSecureRequest(req),
+    sameSite: "lax",
+    maxAge: 10 * 60 * 1000,
+  });
+
+  const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  authUrl.searchParams.set("client_id", clientId);
+  authUrl.searchParams.set("redirect_uri", redirectUri);
+  authUrl.searchParams.set("response_type", "code");
+  authUrl.searchParams.set("scope", "openid email profile");
+  authUrl.searchParams.set("state", state);
+  authUrl.searchParams.set("prompt", "select_account");
+
+  res.redirect(authUrl.toString());
+});
+
+app.get("/api/auth/google/callback", async (req, res) => {
+  const { code, state, error: oauthError } = req.query;
+  const rawStateCookie = req.cookies?.tg_oauth_state;
+  res.clearCookie("tg_oauth_state");
+
+  if (oauthError) {
+    console.error("[oauth] Google returned error:", oauthError);
+    return res.redirect("./login.html?oauth=failed");
+  }
+  if (!code || !state || !rawStateCookie) {
+    console.error("[oauth] Missing code, state, or session cookie.");
+    return res.redirect("./login.html?oauth=failed");
+  }
+
+  let parsedState;
+  try {
+    parsedState = JSON.parse(rawStateCookie);
+  } catch {
+    return res.redirect("./login.html?oauth=failed");
+  }
+
+  if (!parsedState.state || parsedState.state !== state) {
+    console.error("[oauth] State mismatch (CSRF protection triggered).");
+    return res.redirect("./login.html?oauth=failed");
+  }
+
+  try {
+    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code: String(code),
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: parsedState.redirectUri,
+        grant_type: "authorization_code",
+      }),
+    });
+    const tokens = await tokenRes.json();
+    if (!tokenRes.ok || !tokens.access_token) {
+      console.error("[oauth] Token exchange failed:", tokens);
+      return res.redirect("./login.html?oauth=failed");
+    }
+
+    const userRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
+    });
+    const profile = await userRes.json();
+    if (!userRes.ok || !profile.email) {
+      console.error("[oauth] Failed to retrieve user profile:", profile);
+      return res.redirect("./login.html?oauth=failed");
+    }
+
+    const email = profile.email.toLowerCase().trim();
+    let user = db.prepare("SELECT * FROM users WHERE oauth_provider = 'google' AND oauth_subject = ?").get(profile.id);
+    if (!user) {
+      user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
+      if (user) {
+        db.prepare("UPDATE users SET oauth_provider = 'google', oauth_subject = ?, avatar = COALESCE(avatar, ?) WHERE id = ?")
+          .run(profile.id, profile.picture || "", user.id);
+      }
+    }
+
+    if (!user) {
+      const id = nanoid();
+      const randomPassword = crypto.randomBytes(32).toString("hex");
+      const hash = await bcrypt.hash(randomPassword, 10);
+      db.prepare(
+        "INSERT INTO users (id, email, password_hash, name, avatar, role, plan, credits, oauth_provider, oauth_subject) VALUES (?, ?, ?, ?, ?, 'user', 'free', 50, 'google', ?)"
+      ).run(id, email, hash, profile.name || email.split("@")[0], profile.picture || "", profile.id);
+      user = db.prepare("SELECT * FROM users WHERE id = ?").get(id);
+    }
+
+    if (user.disabled) {
+      return res.redirect("./login.html?error=disabled");
+    }
+
+    setSession(res, req, user);
+    audit(user.id, "auth.google_login", user.id);
+
+    const safeNext = (parsedState.next && (parsedState.next.startsWith("/") || parsedState.next.startsWith("./")) && !parsedState.next.startsWith("//") && !parsedState.next.includes("\\") && !parsedState.next.includes(":"))
+      ? parsedState.next
+      : "./chat.html";
+
+    res.redirect(safeNext);
+  } catch (err) {
+    console.error("[oauth] Unexpected error during Google callback:", err);
+    res.redirect("./login.html?oauth=failed");
+  }
+});
+
 // ---------- TWO-FACTOR AUTHENTICATION (TOTP) ----------
 app.get("/api/auth/2fa/status", requireAuth, (req, res) => {
   res.json({ enabled: Boolean(req.user.two_factor_enabled) });
@@ -680,7 +810,7 @@ app.get("/api/announcements", requireAuth, (req, res) => {
     ORDER BY a.created_at DESC LIMIT 30`).all(req.user.id);
   res.json({ announcements: rows });
 });
-app.post("/api/announcements", requireOwner, (req, res) => {
+app.post(["/api/announcements", "/api/owner/announcements"], requireOwner, (req, res) => {
   const { title, body, type = "info", active = true, startsAt = null, endsAt = null } = req.body || {};
   if (!title?.trim() || !body?.trim()) return res.status(400).json({ error: "Title and message are required." });
   if (!['info', 'success', 'warning', 'important'].includes(type)) return res.status(400).json({ error: "Invalid announcement type." });
@@ -1079,9 +1209,9 @@ const openRouterClient = (apiKey) => new OpenAI({
   },
 });
 
-async function callProvider(provider, model, messages) {
+async function callProvider(provider, model, messages, customKey = null) {
   if (provider === "openai" || provider === "openrouter") {
-    const key = provider === "openai" ? process.env.OPENAI_API_KEY : process.env.OPENROUTER_API_KEY;
+    const key = customKey || (provider === "openai" ? process.env.OPENAI_API_KEY : process.env.OPENROUTER_API_KEY);
     if (!key) throw { config: true, provider };
     const client = provider === "openai" ? openAiClient(key) : openRouterClient(key);
     try {
@@ -1122,7 +1252,7 @@ async function callProvider(provider, model, messages) {
     }
   }
   if (provider === "google") {
-    const key = process.env.GOOGLE_API_KEY;
+    const key = customKey || process.env.GOOGLE_API_KEY;
     if (!key) throw { config: true, provider };
     // Gemini expects the system prompt in a dedicated top-level field. Passing
     // it as a chat turn makes recent Gemini 3.x models hang, so it is split out.
@@ -1167,6 +1297,80 @@ async function callProvider(provider, model, messages) {
   throw new Error("Unknown provider");
 }
 
+
+function getModelKeyPool(modelId, baseModel) {
+  const isKey = (k) => Boolean(k && typeof k === "string" && k.trim() && k !== "your_key_here" && !k.startsWith("your_"));
+  const poolMap = {
+    "guider-paradise": [
+      { provider: "openrouter", model: baseModel.model, key: process.env.PARADISE_OPENROUTER_1 },
+      { provider: "openrouter", model: baseModel.model, key: process.env.OPENROUTER_API_KEY },
+    ],
+    "guider-lite": [
+      { provider: "openrouter", model: baseModel.model, key: process.env.LITE_OPENROUTER_1 },
+      { provider: "google", model: "gemini-2.0-flash", key: process.env.LITE_GOOGLE_1 },
+      { provider: "openrouter", model: baseModel.model, key: process.env.OPENROUTER_API_KEY },
+      { provider: "google", model: "gemini-2.0-flash", key: process.env.GOOGLE_API_KEY },
+    ],
+    "guider-blaze": [
+      { provider: "openrouter", model: baseModel.model, key: process.env.BLAZE_OPENROUTER_1 },
+      { provider: "openrouter", model: baseModel.model, key: process.env.BLAZE_OPENROUTER_2 },
+      { provider: "google", model: "gemini-2.0-flash", key: process.env.BLAZE_GOOGLE_1 },
+      { provider: "openrouter", model: baseModel.model, key: process.env.OPENROUTER_API_KEY },
+      { provider: "google", model: "gemini-2.0-flash", key: process.env.GOOGLE_API_KEY },
+    ],
+    "guider-titan": [
+      { provider: "openrouter", model: baseModel.model, key: process.env.TITAN_OPENROUTER_1 },
+      { provider: "openrouter", model: baseModel.model, key: process.env.TITAN_OPENROUTER_2 },
+      { provider: "google", model: "gemini-2.0-flash", key: process.env.TITAN_GOOGLE_1 },
+      { provider: "google", model: "gemini-2.0-flash", key: process.env.TITAN_GOOGLE_2 },
+      { provider: "openrouter", model: baseModel.model, key: process.env.OPENROUTER_API_KEY },
+      { provider: "google", model: "gemini-2.0-flash", key: process.env.GOOGLE_API_KEY },
+    ],
+    "guider-deep": [
+      { provider: "openrouter", model: baseModel.model, key: process.env.DEEP_OPENROUTER_1 },
+      { provider: "openrouter", model: baseModel.model, key: process.env.DEEP_OPENROUTER_2 },
+      { provider: "google", model: "gemini-2.0-flash", key: process.env.DEEP_GOOGLE_1 },
+      { provider: "google", model: "gemini-2.0-flash", key: process.env.DEEP_GOOGLE_2 },
+      { provider: "google", model: "gemini-2.0-flash", key: process.env.DEEP_GOOGLE_3 },
+      { provider: "openrouter", model: baseModel.model, key: process.env.OPENROUTER_API_KEY },
+      { provider: "google", model: "gemini-2.0-flash", key: process.env.GOOGLE_API_KEY },
+    ],
+  };
+
+  const candidates = poolMap[modelId] || [
+    { provider: baseModel.provider, model: baseModel.model, key: process.env[baseModel.provider === "google" ? "GOOGLE_API_KEY" : "OPENROUTER_API_KEY"] }
+  ];
+
+  const seen = new Set();
+  const valid = [];
+  for (const item of candidates) {
+    if (isKey(item.key) && !seen.has(`${item.provider}:${item.key}`)) {
+      seen.add(`${item.provider}:${item.key}`);
+      valid.push(item);
+    }
+  }
+  return valid;
+}
+
+async function executeChatModel(modelId, baseModel, messages) {
+  const pool = getModelKeyPool(modelId, baseModel);
+  if (pool.length === 0) {
+    return await callProvider(baseModel.provider, baseModel.model, messages);
+  }
+
+  let lastError = null;
+  for (let i = 0; i < pool.length; i++) {
+    const candidate = pool[i];
+    try {
+      return await callProvider(candidate.provider, candidate.model, messages, candidate.key);
+    } catch (err) {
+      lastError = err;
+      console.warn(`[chat-pool] Model ${modelId} attempt ${i + 1}/${pool.length} (${candidate.provider}) failed:`, err?.detail || err?.message || err);
+    }
+  }
+  throw lastError;
+}
+
 // Isolated from user conversations: these messages are never written to the
 // conversations/messages tables and are available only through owner routes.
 app.get("/api/owner/assistant/history", requireOwner, (req, res) => {
@@ -1181,7 +1385,7 @@ app.post("/api/owner/assistant", requireOwner, async (req, res) => {
   const history = db.prepare("SELECT role,content FROM owner_assistant_messages WHERE owner_id=? ORDER BY created_at DESC LIMIT 16").all(req.user.id).reverse();
   db.prepare("INSERT INTO owner_assistant_messages (id,owner_id,role,content) VALUES (?,?,?,?)").run(nanoid(),req.user.id,"user",message.trim());
   try {
-    const reply = await callProvider(model.provider, model.model, [{ role:"system",content:"You are the private The Tech Guider AI Owner Assistant. Help administer the platform safely. Never reveal secrets or claim unverified operational actions." },...history,{role:"user",content:message.trim()}]);
+    const reply = await executeChatModel(effectiveModelId, model, [{ role:"system",content:"You are the private The Tech Guider AI Owner Assistant. Help administer the platform safely. Never reveal secrets or claim unverified operational actions." },...history,{role:"user",content:message.trim()}]);
     db.prepare("INSERT INTO owner_assistant_messages (id,owner_id,role,content) VALUES (?,?,?,?)").run(nanoid(),req.user.id,"assistant",reply);
     audit(req.user.id,"owner_assistant.used",modelId);
     res.json({ reply });

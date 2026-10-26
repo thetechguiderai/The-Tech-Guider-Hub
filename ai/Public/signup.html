@@ -1,1 +1,26 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Create account — The Tech Guider AI</title><link rel="icon" href="./logo.png"><link rel="stylesheet" href="./style.css"><script src="./api.js"></script></head><body class="landing"><header class="nav"><a href="./index.html" class="logo"><img src="./logo.png" class="logo-img" alt="The Tech Guider AI">The Tech Guider AI</a></header><main class="auth-wrap"><section class="auth-card google-auth"><img src="./logo.png" class="auth-logo" alt=""><p class="eyebrow">THE TECH GUIDER AI</p><h1>Create your account</h1><p class="auth-sub">Use Google or create an account with email and password.</p><p id="formError" class="form-error" hidden></p><form id="signupForm"><label class="field">Name<input id="name" autocomplete="name"></label><label class="field">Email<input id="email" type="email" autocomplete="email" required></label><label class="field">Password<input id="password" type="password" autocomplete="new-password" minlength="8" required></label><button class="btn btn-primary btn-block" type="submit">Create account</button></form><p class="auth-alt">Already have an account? <a href="./login.html">Sign in</a></p></section></main><script>const $=s=>document.querySelector(s),error=$('#formError');$('#signupForm').onsubmit=async e=>{e.preventDefault();error.hidden=true;try{const r=await fetch('/api/auth/signup',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('#name').value,email:$('#email').value,password:$('#password').value})}),d=await r.json();if(!r.ok)throw Error(d.error);location.assign(new URLSearchParams(location.search).get('next')||'./chat.html')}catch(x){error.textContent=x.message;error.hidden=false}}</script></body></html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Create account — The Tech Guider AI</title><link rel="icon" href="./logo.png"><link rel="stylesheet" href="./style.css"><script src="./api.js"></script></head><body class="landing"><header class="nav"><a href="./index.html" class="logo"><img src="./logo.png" class="logo-img" alt="The Tech Guider AI">The Tech Guider AI</a></header><main class="auth-wrap"><section class="auth-card google-auth"><img src="./logo.png" class="auth-logo" alt=""><p class="eyebrow">THE TECH GUIDER AI</p><h1>Create your account</h1><p class="auth-sub">Sign up with Google or your email.</p><p id="formError" class="form-error" hidden></p><a href="/api/auth/google" id="googleSignupBtn" class="btn btn-ghost btn-block oauth-btn" style="display:flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;margin-bottom:16px;background:#181818;border:1px solid #333;color:#eee;font-weight:600;"><svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>Continue with Google</a><div class="auth-divider" style="margin:16px 0;color:#666;font-size:12px;"><span>or with email</span></div><form id="signupForm"><label class="field">Name<input id="name" autocomplete="name"></label><label class="field">Email<input id="email" type="email" autocomplete="email" required></label><label class="field">Password<input id="password" type="password" autocomplete="new-password" minlength="8" required></label><button class="btn btn-primary btn-block" type="submit">Create account</button></form><p class="auth-alt">Already have an account? <a href="./login.html">Sign in</a></p></section></main><script>
+const $=s=>document.querySelector(s),error=$('#formError');
+const googleBtn=$('#googleSignupBtn');
+const qNext=new URLSearchParams(location.search).get('next');
+if(googleBtn && qNext){
+  googleBtn.href += (googleBtn.href.includes('?') ? '&' : '?') + 'next=' + encodeURIComponent(qNext);
+}
+$('#signupForm').onsubmit=async e=>{
+  e.preventDefault();
+  error.hidden=true;
+  try{
+    const r=await fetch('/api/auth/signup',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('#name').value,email:$('#email').value,password:$('#password').value})}),d=await r.json();
+    if(!r.ok)throw Error(d.error);
+    const n=new URLSearchParams(location.search).get('next'),target=(n&&(n.startsWith('/')||n.startsWith('./'))&&!n.startsWith('//')&&!n.includes('\\')&&!n.includes(':'))?n:'./chat.html';
+    location.assign(target);
+  }catch(x){
+    error.textContent=x.message;
+    error.hidden=false;
+  }
+};
+const reason=new URLSearchParams(location.search).get('oauth');
+if(reason&&reason!=='success'){
+  error.hidden=false;
+  error.textContent=reason==='unavailable'?'Google sign-in has not been configured yet (missing GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET in .env).':'Google sign-in could not be completed. Please try again.';
+}
+</script></body></html>

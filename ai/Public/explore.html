@@ -26,23 +26,51 @@
     <main class="main">
       <div class="page-inner">
         <h1>Explore Models</h1>
-        <div id="modelsGrid" class="quick-cards" style="grid-template-columns:repeat(2,1fr);"></div>
+        <div id="modelsGrid" class="quick-cards" style="grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px;"></div>
       </div>
     </main>
   </div>
 
 <script>
-async function load() {
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let allModels = [];
+
+function render(items) {
   const grid = document.getElementById("modelsGrid");
-  const res = await fetch("/api/models", { credentials: "include" });
-  const { models } = await res.json();
-  grid.innerHTML = models.map(m => `
+  if (!items || items.length === 0) {
+    grid.innerHTML = `<p class="empty-note" style="grid-column:1/-1;">No models found matching your search.</p>`;
+    return;
+  }
+  grid.innerHTML = items.map(m => `
     <div class="quick-card">
-      <strong>${m.name} ${m.locked ? "🔒" : ""}</strong>
-      <span>${m.desc}</span>
-      <div class="meta" style="margin-top:8px;">${m.tier.toUpperCase()}</div>
+      <strong>${esc(m.name)} ${m.locked ? "🔒" : ""}</strong>
+      <span>${esc(m.desc)}</span>
+      <div class="meta" style="margin-top:8px;">${esc((m.tier || '').toUpperCase())}</div>
     </div>`).join("");
 }
+
+async function load() {
+  const grid = document.getElementById("modelsGrid");
+  try {
+    const res = await fetch("/api/models", { credentials: "include" });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to load models');
+    allModels = data.models || [];
+    render(allModels);
+  } catch (err) {
+    grid.innerHTML = `<p class="empty-note" style="grid-column:1/-1;">Could not load models. Please refresh to try again.</p>`;
+  }
+}
+
+const searchInput = document.querySelector(".search");
+if (searchInput) {
+  searchInput.addEventListener("input", e => {
+    const q = e.target.value.toLowerCase().trim();
+    const filtered = allModels.filter(m => (m.name || '').toLowerCase().includes(q) || (m.desc || '').toLowerCase().includes(q) || (m.tier || '').toLowerCase().includes(q));
+    render(filtered);
+  });
+}
+
 load();
 </script>
 </body>

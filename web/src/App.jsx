@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { publicApi } from './api';
 import { SiteContext } from './context';
 import Layout from './components/Layout';
+import { Spinner } from './components/ui';
 
 import Home from './pages/Home';
 import Resources from './pages/Resources';
@@ -30,6 +31,31 @@ import Team from './pages/Team';
 import Owner from './pages/Owner';
 import Dashboard from './pages/dashboard/Dashboard';
 import NotFound from './pages/NotFound';
+
+/* Entertainment ko alag chunk mein rakha gaya hai taake homepage bundle par
+   games/quizzes ka code load na ho. */
+const Entertainment = lazy(() => import('./pages/entertainment/Entertainment'));
+const EntertainmentGames = lazy(() => import('./pages/entertainment/EntertainmentGames'));
+const EntertainmentGame = lazy(() => import('./pages/entertainment/EntertainmentGame'));
+const QuizCenter = lazy(() => import('./pages/entertainment/QuizCenter'));
+const MemeGenerator = lazy(() => import('./pages/entertainment/MemeGenerator'));
+const FunTests = lazy(() => import('./pages/entertainment/FunTests'));
+const ChillZone = lazy(() => import('./pages/entertainment/ChillZone'));
+const Achievements = lazy(() => import('./pages/entertainment/Achievements'));
+
+function LazyPage({ children }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="container" style={{ paddingTop: 64, paddingBottom: 64 }}>
+          <Spinner label="Entertainment load ho raha hai…" />
+        </div>
+      }
+    >
+      {children}
+    </Suspense>
+  );
+}
 
 function useMeta(title, description) {
   useEffect(() => {
@@ -81,6 +107,14 @@ export default function App() {
         <Route path="/support" element={<Layout><Support /></Layout>} />
         <Route path="/shop" element={<Layout><Shop /></Layout>} />
         <Route path="/fun" element={<Layout><FunZone /></Layout>} />
+        <Route path="/entertainment" element={<Layout><LazyPage><Entertainment /></LazyPage></Layout>} />
+        <Route path="/entertainment/games" element={<Layout><LazyPage><EntertainmentGames /></LazyPage></Layout>} />
+        <Route path="/entertainment/games/:gameId" element={<Layout><LazyPage><EntertainmentGame /></LazyPage></Layout>} />
+        <Route path="/entertainment/quizzes" element={<Layout><LazyPage><QuizCenter /></LazyPage></Layout>} />
+        <Route path="/entertainment/memes" element={<Layout><LazyPage><MemeGenerator /></LazyPage></Layout>} />
+        <Route path="/entertainment/fun" element={<Layout><LazyPage><FunTests /></LazyPage></Layout>} />
+        <Route path="/entertainment/chill" element={<Layout><LazyPage><ChillZone /></LazyPage></Layout>} />
+        <Route path="/entertainment/achievements" element={<Layout><LazyPage><Achievements /></LazyPage></Layout>} />
         <Route path="/about" element={<Layout><About /></Layout>} />
         <Route path="/website-packages" element={<Layout><WebsitePackages /></Layout>} />
         <Route path="/games-packages" element={<Layout><GamesPackages /></Layout>} />
