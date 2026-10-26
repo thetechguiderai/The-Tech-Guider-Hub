@@ -166,11 +166,27 @@ router.post('/redeem', rateLimit, requireUser, (req, res) => {
     return res.status(400).json({ error: `TTG kam hain — ${cost} chahiye, aap ke paas ${balance} hain. Roz mission complete karein!`, points: balance });
   }
 
-  const info = db.prepare(
-    `INSERT INTO coin_requests (user_id, email, source, source_id, title, cost, discount_percent, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`
-  ).run(user.id, user.email, source, id, item.title, cost, discountPercent);
-  db.prepare('UPDATE user_points SET points = points - ?, updated_at = ? WHERE user_id = ?').run(cost, now(), user.id);
+  // Conditional deduct first (single atomic UPDATE, works on both SQLite and
+  // Turso). Two rapid clicks can never spend the same TTG twice.
+  const deduction = db.prepare(
+    'UPDATE user_points SET points = points - ?, updated_at = ? WHERE user_id = ? AND points >= ?'
+  ).run(cost, now(), user.id, cost);
+  if (Number(deduction.changes) !== 1) {
+    const fresh = getPoints(user.id);
+    return res.status(409).json({ error: 'TTG balance badal gaya — dobara koshish karein.', points: fresh ? fresh.points : 0 });
+  }
+
+  let info;
+  try {
+    info = db.prepare(
+      `INSERT INTO coin_requests (user_id, email, source, source_id, title, cost, discount_percent, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`
+    ).run(user.id, user.email, source, id, item.title, cost, discountPercent);
+  } catch (error) {
+    // Refund the just-deducted TTG if the request could not be recorded.
+    db.prepare('UPDATE user_points SET points = points + ?, updated_at = ? WHERE user_id = ?').run(cost, now(), user.id);
+    throw error;
+  }
 
   res.status(201).json({
     ok: true,
@@ -233,18 +249,21 @@ ownerRouter.post('/:id/decide', ownerRequire, (req, res) => {
     }
   }
 
-  if (action === 'reject') {
-    // Honest refund: the coins come back to the user.
-    const bal = getPoints(row.user_id);
-    if (bal) {
-      db.prepare('UPDATE user_points SET points = points + ?, updated_at = ? WHERE user_id = ?').run(row.cost, now(), row.user_id);
-    }
+  // Claim the request with a conditional UPDATE first. Only the click that
+  // actually flips pending -> decided gets to refund, so double-clicks cannot
+  // refund the same TTG twice.
+  const decided = db.prepare(
+    `UPDATE coin_requests SET status = ?, note = ?, delivered_code_enc = ?, decided_at = ?
+     WHERE id = ? AND status = 'pending'`
+  ).run(action === 'approve' ? 'approved' : 'rejected', note, delivered, now(), id);
+  if (Number(decided.changes) !== 1) {
+    return res.status(409).json({ error: 'Ye request pehle decide ho chuki hai.' });
   }
 
-  db.prepare(
-    `UPDATE coin_requests SET status = ?, note = ?, delivered_code_enc = ?, decided_at = ?
-     WHERE id = ?`
-  ).run(action === 'approve' ? 'approved' : 'rejected', note, delivered, now(), id);
+  if (action === 'reject') {
+    // Honest refund: the coins come back to the user.
+    db.prepare('UPDATE user_points SET points = points + ?, updated_at = ? WHERE user_id = ?').run(row.cost, now(), row.user_id);
+  }
 
   audit('coin_request_' + action, {
     target: `coin:${id}`,

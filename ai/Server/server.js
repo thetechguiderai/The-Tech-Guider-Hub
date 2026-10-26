@@ -163,10 +163,13 @@ const MODELS = {
   "guider-lite":     { name: "Guider Lite",     badge: "🪶", tier: "paid",  provider: "openrouter", model: "xingchen-agi/xing4.0-29b-a4b:free", dailyLimit: 0,  price: 250,   desc: "DESIGNING model — website logos, banners, posters (SVG/CSS code), palettes aur mockups. Ek dafa kharid = unlimited." },
   "guider-blaze":    { name: "Guider Blaze",    badge: "⚡", tier: "paid",  provider: "openrouter", model: "nvidia/nemotron-3.5-lightning:free", dailyLimit: 100, price: 399, desc: "CONTENT A-to-Z — YouTube channel name, bio, schedule, logo/banner design code, video-editing plans. 100/day." },
   "guider-titan":    { name: "Guider Titan",    badge: "📚", tier: "paid",  provider: "openrouter", model: "dots-studio/dots-3-note-preview:free", dailyLimit: 100, price: 499, desc: "BUSINESS model — Trading/Stock analysis, Fiverr gigs, office PDFs, business plans. 100/day." },
-  "guider-deep":     { name: "Guider Deep",     badge: "🧠", tier: "guest", provider: "openrouter", model: "nvidia/nemotron-3-ultra-550b-a55b:free", dailyLimit: 0, price: 799, buildxOnly: true, monthlyLimit: 250, desc: "GAME & WEBSITE developer — step-by-step guide, mistakes fix. Sirf BuildX ON pe. FREE 250/mo ya paid unlock." },
+  "guider-deep":     { name: "Guider Deep",     badge: "🧠", tier: "guest", provider: "openrouter", model: "nvidia/nemotron-3-ultra-550b-a55b:free", dailyLimit: 0, price: 799, buildxOnly: true, monthlyLimit: 250, internal: true, desc: "GAME & WEBSITE developer — step-by-step guide, mistakes fix. Sirf BuildX ON pe. FREE 250/mo ya paid unlock." },
+  // Public BuildX entry: same engine as Guider Deep, but with the free
+  // 250-messages/month quota and the one-time unlimited unlock attached.
+  "guider-buildx":   { name: "Guider BuildX",   badge: "🧩", tier: "paid",  provider: "openrouter", model: "nvidia/nemotron-3-ultra-550b-a55b:free", dailyLimit: 0, price: 799, buildxOnly: true, monthlyLimit: 250, desc: "GAME & WEBSITE developer — websites, games aur tools. Free 250 messages/month, one-time unlock = unlimited." },
 };
-// BuildX mode runs on Guider Deep (dedicated build/engine model).
-const BUILDX_MODEL_ID = "guider-deep";
+// BuildX mode runs on the public Guider BuildX entry (free monthly quota).
+const BUILDX_MODEL_ID = "guider-buildx";
 const BUILDX_MONTHLY_FREE_LIMIT = 250;
 const MODEL_IDS = Object.keys(MODELS);
 
@@ -770,13 +773,13 @@ app.patch("/api/auth/me", requireAuth, (req, res) => {
 // ---------- MODELS / PLANS ----------
 function buildxMonthlyUsed(userId) {
   const month = new Date().toISOString().slice(0, 7); // "YYYY-MM"
-  return db.prepare("SELECT COALESCE(SUM(count),0) AS count FROM usage_log WHERE model = 'guider-buildx' AND day LIKE ?").get(`${month}%`).count;
+  return db.prepare("SELECT COALESCE(SUM(count),0) AS count FROM usage_log WHERE user_id = ? AND model = 'guider-monthly-marker' AND day LIKE ?").get(userId, `${month}%`).count;
 }
 app.get("/api/models", (req, res) => {
   const user = getUser(req);
   // Guider Astron is the internal Hub Helper engine (floating site widget) —
   // it is never a user-selectable model in The Tech Guider AI workspace.
-  const list = Object.entries(MODELS).filter(([id]) => id !== "guider-astron").map(([id]) => {
+  const list = Object.entries(MODELS).filter(([, m]) => !m.internal).map(([id]) => {
     const m = modelConfig(id);
     const unlocked = Boolean(user) && (user.role === "owner" || modelUnlocked(user.id, id));
     let locked = false;
@@ -853,6 +856,13 @@ app.post("/api/billing/checkout", requireAuth, (req, res) => {
     const method = db.prepare("SELECT * FROM payment_methods WHERE id=? AND active=1").get(paymentMethodId);
     if (!method) throw new Error("Choose an available payment method.");
     if (method.proof_required && !proofReference?.trim()) throw new Error("Payment proof reference is required for this method.");
+    const transactionKey = transactionId.trim();
+    // One real payment reference can only be submitted once. This blocks
+    // reusing the same JazzCash/bank TID to unlock multiple models.
+    const duplicate = db.prepare(
+      "SELECT id FROM payments WHERE LOWER(transaction_id) = LOWER(?) AND status IN ('pending','approved') LIMIT 1"
+    ).get(transactionKey);
+    if (duplicate) throw new Error("Ye transaction ID pehle submit ho chuki hai — status check karein ya alag reference use karein.");
     const id = nanoid();
     let amount, planLabel, modelId = null;
     if (isModel) {
@@ -1102,7 +1112,7 @@ function checkLimit(userId, modelId) {
   const model = modelConfig(modelId);
   if (!model) return { allowed: false, reason: "Unknown model." };
   if (!model.enabled) return { allowed: false, reason: `${model.name} is temporarily unavailable.` };
-  const account = db.prepare("SELECT plan FROM users WHERE id = ?").get(userId);
+  const account = db.prepare("SELECT plan, role FROM users WHERE id = ?").get(userId);
   const planLimit = account ? planConfig(account.plan)?.dailyLimit : null;
   const day = new Date().toISOString().slice(0, 10);
   if (planLimit > 0) {
@@ -1110,7 +1120,7 @@ function checkLimit(userId, modelId) {
     if (planUsed >= planLimit) return { allowed: false, reason: `Daily plan limit reached (${planLimit}/day).` };
   }
   // BuildX free tier: monthly limit (paid unlock = unlimited, dailyLimit 0).
-  if (modelId === "guider-buildx" && !modelUnlocked(userId, modelId)) {
+  if (modelId === BUILDX_MODEL_ID && account?.role !== "owner" && !modelUnlocked(userId, BUILDX_MODEL_ID)) {
     const month = day.slice(0, 7);
     const monthRow = db.prepare("SELECT * FROM usage_log WHERE user_id = ? AND model = 'guider-monthly-marker' AND day = ?").get(userId, month);
     const monthUsed = buildxMonthlyUsed(userId);
@@ -1416,7 +1426,9 @@ app.post("/api/chat", async (req, res) => {
   if (maintenanceEnabled() && !isConfiguredOwner(user)) return res.status(503).json({ error: "The service is temporarily in maintenance mode." });
   if (!model.enabled) return res.status(503).json({ error: `${model.name} is temporarily unavailable.` });
   // Paid models need a one-time per-model unlock (owner-approved payment).
-  if (model.tier === "paid" && !canUseModel(user, effectiveModelId)) {
+  // BuildX is the exception: signed-in users get a free 250/month quota that
+  // checkLimit() below enforces; the paid unlock removes that cap.
+  if (model.tier === "paid" && effectiveModelId !== BUILDX_MODEL_ID && !canUseModel(user, effectiveModelId)) {
     return res.status(403).json({ error: `${model.name} locked hai. One-time unlock karein: /ai/unlock/${effectiveModelId}` });
   }
 
